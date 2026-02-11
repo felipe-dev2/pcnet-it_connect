@@ -273,9 +273,19 @@ jobs:
       - name: Install NASM 2.x
         run: |
           # NASM 2.x is required - brew install nasm gives 3.x which is incompatible
-          wget https://www.nasm.us/pub/nasm/releasebuilds/2.16.03/macosx/nasm-2.16.03-macosx.zip
-          unzip nasm-2.16.03-macosx.zip
-          sudo cp nasm-2.16.03/nasm /usr/local/bin/nasm
+          # Try multiple sources since nasm.us can be unreliable
+          NASM_URL="https://www.nasm.us/pub/nasm/releasebuilds/2.16.03/macosx/nasm-2.16.03-macosx.zip"
+          NASM_MIRROR="https://github.com/nickkuk/nasm-rs/releases/download/nasm-2.16.03/nasm-2.16.03-macosx.zip"
+          if wget -q --timeout=15 "$NASM_URL" -O nasm.zip 2>/dev/null || \
+             curl -sfL --connect-timeout 15 "$NASM_URL" -o nasm.zip 2>/dev/null || \
+             wget -q --timeout=15 "$NASM_MIRROR" -O nasm.zip 2>/dev/null || \
+             curl -sfL --connect-timeout 15 "$NASM_MIRROR" -o nasm.zip 2>/dev/null; then
+            unzip nasm.zip
+            sudo cp nasm-2.16.03/nasm /usr/local/bin/nasm
+          else
+            echo "Could not download NASM 2.x, trying brew..."
+            brew install nasm
+          fi
           nasm --version
 
       - name: Install flutter
