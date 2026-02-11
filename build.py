@@ -417,7 +417,7 @@ def build_flutter_dmg(version, features):
     if not os.path.exists(app_path):
         app_name = 'RustDesk'
         app_path = f'./build/macos/Build/Products/Release/{app_name}.app/Contents/MacOS/'
-    system2(f'cp -rf ../target/release/service {app_path}')
+    system2(f'cp -rf ../target/release/service "{app_path}"')
     '''
     system2(
         "create-dmg --volname \"RustDesk Installer\" --window-pos 200 120 --window-size 800 400 --icon-size 100 --app-drop-link 600 185 --icon RustDesk.app 200 190 --hide-extension RustDesk.app rustdesk.dmg ./build/macos/Build/Products/Release/RustDesk.app")
