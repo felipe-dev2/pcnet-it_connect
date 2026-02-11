@@ -307,41 +307,18 @@ class _ConnectionPageState extends State<ConnectionPage>
 
   @override
   Widget build(BuildContext context) {
-    final isOutgoingOnly = bind.isOutgoingOnly();
     return Container(
-      decoration: BoxDecoration(
-        gradient: PCNETColors.backgroundGradient,
-      ),
+      color: PCNETColors.blackPrimary,
       child: Column(
         children: [
-          Expanded(
-              child: Column(
-            children: [
-              // Campo de conexão centralizado
-              Center(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Flexible(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 600),
-                        child: _buildRemoteIDTextField(context),
-                      ),
-                    ),
-                  ],
-                ),
-              ).marginOnly(top: 40),
-              SizedBox(height: 20),
-              Divider(
-                color: PCNETColors.dividerColor,
-                thickness: 1,
-              ).paddingOnly(left: 12, right: 12),
-              // Lista de peers
-              Expanded(child: PeerTabPage()),
-            ],
-          ).paddingOnly(left: 12.0, right: 12.0)),
-          if (!isOutgoingOnly) Divider(height: 1, color: PCNETColors.dividerColor),
-          if (!isOutgoingOnly) OnlineStatusWidget()
+          // Connection input area
+          Container(
+            padding: EdgeInsets.fromLTRB(20, 16, 20, 12),
+            child: _buildRemoteIDTextField(context),
+          ),
+          Divider(height: 1, color: PCNETColors.dividerColor),
+          // Peers list - takes all remaining space
+          Expanded(child: PeerTabPage().paddingOnly(left: 12.0, right: 12.0)),
         ],
       ),
     );
@@ -364,13 +341,11 @@ class _ConnectionPageState extends State<ConnectionPage>
   /// Search for a peer.
   Widget _buildRemoteIDTextField(BuildContext context) {
     var w = Container(
-      width: 320 + 20 * 2,
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 22),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
       decoration: BoxDecoration(
-        borderRadius: const BorderRadius.all(Radius.circular(13)),
-        border: Border.all(color: PCNETColors.borderColor, width: 2),
-        color: PCNETColors.grayDark,
-        boxShadow: PCNETColors.neonGlow,
+        borderRadius: const BorderRadius.all(Radius.circular(10)),
+        border: Border.all(color: PCNETColors.greenPrimary.withOpacity(0.4), width: 1),
+        color: PCNETColors.surfaceColor,
       ),
       child: Ink(
         child: Column(
@@ -512,9 +487,10 @@ class _ConnectionPageState extends State<ConnectionPage>
                           decoration: BoxDecoration(
                             boxShadow: [
                               BoxShadow(
-                                color: PCNETColors.greenPrimary.withOpacity(0.3),
-                                blurRadius: 10,
-                                spreadRadius: 2,
+                                color: Colors.black.withOpacity(0.3),
+                                blurRadius: 8,
+                                spreadRadius: 0,
+                                offset: Offset(0, 4),
                               ),
                             ],
                           ),

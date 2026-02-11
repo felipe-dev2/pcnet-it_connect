@@ -12,15 +12,16 @@ Widget getConnectionPageTitle(BuildContext context, bool isWeb) {
           child: Row(
         children: [
           AutoSizeText(
-            'Inserir ID PCNET-IT Connect',
+            translate('Control Remote Desktop'),
             maxLines: 1,
             style: Theme.of(context)
                 .textTheme
                 .titleLarge
                 ?.merge(TextStyle(
                   height: 1,
+                  fontSize: 15,
                   color: PCNETColors.greenPrimary,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w600,
                 )),
           ).marginOnly(right: 4),
           Tooltip(
@@ -28,8 +29,8 @@ Widget getConnectionPageTitle(BuildContext context, bool isWeb) {
             message: translate(isWeb ? "web_id_input_tip" : "id_input_tip"),
             child: Icon(
               Icons.help_outline_outlined,
-              size: 16,
-              color: PCNETColors.greenPrimary.withOpacity(0.7),
+              size: 14,
+              color: PCNETColors.textSecondary,
             ),
           ),
         ],

@@ -25,6 +25,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:window_size/window_size.dart' as window_size;
 import '../widgets/button.dart';
+import '../../common/pcnet_colors.dart';
 
 class DesktopHomePage extends StatefulWidget {
   const DesktopHomePage({Key? key}) : super(key: key);
@@ -63,41 +64,19 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     final isOutgoingOnly = bind.isOutgoingOnly();
     return _buildBlock(
         child: Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xFF0a0a0a), Color(0xFF1a1a1a)],
-        ),
-      ),
-      child: Column(
+      color: PCNETColors.blackPrimary,
+      child: Row(
         children: [
-          // Top bar with logo + app name + settings
-          _buildTopBar(context),
-          // Main content
+          // Left panel - Device info
+          if (!isOutgoingOnly)
+            _buildLeftPanel(context),
+          // Vertical divider
+          if (!isOutgoingOnly)
+            Container(width: 1, color: PCNETColors.dividerColor),
+          // Right panel - Connection + Peers
           Expanded(
-            child: SingleChildScrollView(
-              controller: _leftPaneScrollController,
-              child: Column(
-                children: [
-                  SizedBox(height: 20),
-                  // Center card with ID info + connection
-                  _buildCenterCard(context, isOutgoingOnly),
-                  SizedBox(height: 20),
-                  // Peers section
-                  if (!isIncomingOnly)
-                    Container(
-                      constraints: BoxConstraints(maxWidth: 900),
-                      padding: EdgeInsets.symmetric(horizontal: 24),
-                      child: ConnectionPage(),
-                    ),
-                ],
-              ),
-            ),
+            child: _buildRightPanel(context, isIncomingOnly, isOutgoingOnly),
           ),
-          // Status bar at bottom
-          if (!isIncomingOnly)
-            OnlineStatusWidget().marginOnly(bottom: 6, left: 12, right: 12),
         ],
       ),
     ));
@@ -108,223 +87,195 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         block: _block, mask: true, use: canBeBlocked, child: child);
   }
 
-  Widget _buildTopBar(BuildContext context) {
-    final textColor = Theme.of(context).textTheme.titleLarge?.color;
-    return Container(
-      height: 50,
-      decoration: BoxDecoration(
-        color: Color(0xFF111111),
-      ),
-      padding: EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          // Left: Logo
-          Container(
-            width: 36,
-            height: 36,
-            child: Image.asset(
-              'assets/icon.png',
-              fit: BoxFit.contain,
-              errorBuilder: (ctx, error, stackTrace) => Container(),
-            ),
-          ),
-          // Center: App Name
-          Text(
-            'PCNET-IT Connect',
-            style: TextStyle(
-              color: Color(0xFF00CC00),
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          // Right: Settings Icon
-          InkWell(
-            child: Obx(
-              () => Icon(
-                Icons.settings,
-                color: _editHover.value ? textColor : Colors.grey.withOpacity(0.5),
-                size: 22,
-              ),
-            ),
-            onTap: () => {
-              if (DesktopSettingPage.tabKeys.isNotEmpty)
-                {
-                  DesktopSettingPage.switch2page(DesktopSettingPage.tabKeys[0])
-                }
-            },
-            onHover: (value) => _editHover.value = value,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCenterCard(BuildContext context, bool isOutgoingOnly) {
-    return Container(
-      constraints: BoxConstraints(maxWidth: 500),
-      margin: EdgeInsets.symmetric(horizontal: 24),
-      decoration: BoxDecoration(
-        color: Color(0xFF1a1a1a),
-        border: Border.all(
-          color: Color(0xFF00CC00).withOpacity(0.3),
-          width: 1,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Color(0xFF00CC00).withOpacity(0.1),
-            blurRadius: 20,
-            spreadRadius: 2,
-          ),
-        ],
-      ),
-      padding: EdgeInsets.all(24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Logo
-          loadLogo(),
-          SizedBox(height: 16),
-          // Divider
-          Container(
-            height: 1,
-            color: Color(0xFF00CC00).withOpacity(0.3),
-          ),
-          SizedBox(height: 16),
-          // "Seu Computador" Section Title
-          if (!isOutgoingOnly)
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Seu Computador',
-                style: TextStyle(
-                  color: Color(0xFF00CC00),
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+  /// Left panel: Device info (ID, Password, Status)
+  Widget _buildLeftPanel(BuildContext context) {
+    return ChangeNotifierProvider.value(
+      value: gFFI.serverModel,
+      child: Container(
+        width: 260,
+        color: PCNETColors.surfaceColor,
+        child: Column(
+          children: [
+            // Header with logo and name
+            _buildLeftHeader(context),
+            Divider(height: 1, color: PCNETColors.dividerColor),
+            // Device info section
+            Expanded(
+              child: SingleChildScrollView(
+                controller: _leftPaneScrollController,
+                child: Column(
+                  key: _childKey,
+                  children: [
+                    SizedBox(height: 16),
+                    // "This Device" label
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 20),
+                      child: Row(
+                        children: [
+                          Icon(Icons.computer, size: 16, color: PCNETColors.textSecondary),
+                          SizedBox(width: 8),
+                          Text(
+                            translate('Your Desktop'),
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: PCNETColors.textSecondary,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: 12),
+                    // ID Board
+                    buildIDBoard(context),
+                    // Password Board
+                    buildPasswordBoard(context),
+                    SizedBox(height: 16),
+                    // Preset Password Warning
+                    buildPresetPasswordWarning(),
+                    // Help Cards
+                    FutureBuilder<Widget>(
+                      future: Future.value(
+                          Obx(() => buildHelpCards(stateGlobal.updateUrl.value))),
+                      builder: (_, data) {
+                        if (data.hasData) {
+                          if (bind.isIncomingOnly()) {
+                            if (isInHomePage()) {
+                              Future.delayed(Duration(milliseconds: 300), () {
+                                _updateWindowSize();
+                              });
+                            }
+                          }
+                          return data.data!;
+                        } else {
+                          return const Offstage();
+                        }
+                      },
+                    ),
+                    buildPluginEntry(),
+                  ],
                 ),
               ),
             ),
-          if (!isOutgoingOnly) SizedBox(height: 12),
-          // Preset Password Warning
-          if (!isOutgoingOnly) buildPresetPasswordWarning(),
-          // ID Board
-          if (!isOutgoingOnly) _buildIDBoard(context),
-          // Password Board
-          if (!isOutgoingOnly) buildPasswordBoard(context),
-          // Divider
-          if (!isOutgoingOnly) SizedBox(height: 16),
-          if (!isOutgoingOnly)
-            Container(
-              height: 1,
-              color: Color(0xFF00CC00).withOpacity(0.3),
-            ),
-          if (!isOutgoingOnly) SizedBox(height: 16),
-          // Connection Section Title
-          Align(
-            alignment: Alignment.centerLeft,
+            // Status bar at bottom of left panel
+            Divider(height: 1, color: PCNETColors.dividerColor),
+            _buildStatusBar(context),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Header with logo + app name + settings button
+  Widget _buildLeftHeader(BuildContext context) {
+    return Container(
+      height: 56,
+      padding: EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          // Logo
+          Container(
+            width: 32,
+            height: 32,
+            child: loadIcon(32),
+          ),
+          SizedBox(width: 10),
+          // App Name
+          Expanded(
             child: Text(
-              'Conectar',
+              'PCNET-IT Connect',
               style: TextStyle(
-                color: Color(0xFF00CC00),
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
+                color: PCNETColors.greenPrimary,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
               ),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
-          SizedBox(height: 12),
-          // Connection input (simplified - you may want to integrate the full ConnectionPage input here)
-          Text(
-            translate(isOutgoingOnly ? 'outgoing_only_desk_tip' : 'desk_tip'),
-            style: Theme.of(context).textTheme.bodySmall,
-            textAlign: TextAlign.center,
-          ),
-          // Help Cards
-          FutureBuilder<Widget>(
-            future: Future.value(
-                Obx(() => buildHelpCards(stateGlobal.updateUrl.value))),
-            builder: (_, data) {
-              if (data.hasData) {
-                return data.data!;
-              } else {
-                return const Offstage();
-              }
-            },
-          ),
-          // Plugin Entry
-          buildPluginEntry(),
+          // Settings button
+          _buildSettingsButton(context),
         ],
       ),
     );
   }
 
-  Widget _buildIDBoard(BuildContext context) {
-    final model = gFFI.serverModel;
+  Widget _buildSettingsButton(BuildContext context) {
+    final textColor = Theme.of(context).textTheme.titleLarge?.color;
+    return InkWell(
+      borderRadius: BorderRadius.circular(6),
+      child: Obx(
+        () => Padding(
+          padding: EdgeInsets.all(6),
+          child: Icon(
+            Icons.settings_outlined,
+            color: _editHover.value ? textColor : PCNETColors.textSecondary,
+            size: 20,
+          ),
+        ),
+      ),
+      onTap: () => {
+        if (DesktopSettingPage.tabKeys.isNotEmpty)
+          {
+            DesktopSettingPage.switch2page(DesktopSettingPage.tabKeys[0])
+          }
+      },
+      onHover: (value) => _editHover.value = value,
+    );
+  }
+
+  /// Status bar at bottom of left panel
+  Widget _buildStatusBar(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(left: 0, right: 0, top: 8),
+      height: 36,
+      padding: EdgeInsets.symmetric(horizontal: 16),
+      child: OnlineStatusWidget(),
+    );
+  }
+
+  /// Right panel: Connection input + Peers
+  Widget _buildRightPanel(BuildContext context, bool isIncomingOnly, bool isOutgoingOnly) {
+    if (isOutgoingOnly) {
+      return Column(
+        children: [
+          _buildOutgoingOnlyHeader(context),
+          Divider(height: 1, color: PCNETColors.dividerColor),
+          Expanded(child: ConnectionPage()),
+        ],
+      );
+    }
+    return ConnectionPage();
+  }
+
+  Widget _buildOutgoingOnlyHeader(BuildContext context) {
+    return Container(
+      height: 56,
+      color: PCNETColors.surfaceColor,
+      padding: EdgeInsets.symmetric(horizontal: 16),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.baseline,
-        textBaseline: TextBaseline.alphabetic,
         children: [
           Container(
-            width: 2,
-            height: 52,
-            decoration: const BoxDecoration(color: Color(0xFF00CC00)),
+            width: 32,
+            height: 32,
+            child: loadIcon(32),
           ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(left: 7),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    height: 25,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          translate("ID"),
-                          style: TextStyle(
-                              fontSize: 14,
-                              color: Theme.of(context)
-                                  .textTheme
-                                  .titleLarge
-                                  ?.color
-                                  ?.withOpacity(0.5)),
-                        ).marginOnly(top: 5),
-                        buildPopupMenu(context)
-                      ],
-                    ),
-                  ),
-                  Flexible(
-                    child: GestureDetector(
-                      onDoubleTap: () {
-                        Clipboard.setData(
-                            ClipboardData(text: model.serverId.text));
-                        showToast(translate("Copied"));
-                      },
-                      child: TextFormField(
-                        controller: model.serverId,
-                        readOnly: true,
-                        decoration: InputDecoration(
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.only(top: 10, bottom: 10),
-                        ),
-                        style: TextStyle(
-                          fontSize: 22,
-                        ),
-                      ).workaroundFreezeLinuxMint(),
-                    ),
-                  )
-                ],
-              ),
+          SizedBox(width: 10),
+          Text(
+            'PCNET-IT Connect',
+            style: TextStyle(
+              color: PCNETColors.greenPrimary,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
             ),
           ),
+          Spacer(),
+          _buildSettingsButton(context),
         ],
       ),
     );
   }
+
+  // ============ Legacy methods kept for compatibility ============
 
   Widget buildLeftPane(BuildContext context) {
     final isIncomingOnly = bind.isIncomingOnly();
@@ -440,62 +391,60 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   buildIDBoard(BuildContext context) {
     final model = gFFI.serverModel;
     return Container(
-      margin: const EdgeInsets.only(left: 20, right: 11),
-      height: 57,
+      margin: const EdgeInsets.only(left: 20, right: 20),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.baseline,
         textBaseline: TextBaseline.alphabetic,
         children: [
           Container(
-            width: 2,
-            decoration: const BoxDecoration(color: MyTheme.accent),
-          ).marginOnly(top: 5),
+            width: 3,
+            height: 48,
+            decoration: BoxDecoration(
+              color: PCNETColors.greenPrimary,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.only(left: 7),
+              padding: const EdgeInsets.only(left: 10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    height: 25,
+                  Text(
+                    "ID",
+                    style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: PCNETColors.textSecondary),
+                  ),
+                  GestureDetector(
+                    onDoubleTap: () {
+                      Clipboard.setData(
+                          ClipboardData(text: model.serverId.text));
+                      showToast(translate("Copied"));
+                    },
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          translate("ID"),
-                          style: TextStyle(
-                              fontSize: 14,
-                              color: Theme.of(context)
-                                  .textTheme
-                                  .titleLarge
-                                  ?.color
-                                  ?.withOpacity(0.5)),
-                        ).marginOnly(top: 5),
-                        buildPopupMenu(context)
+                        Expanded(
+                          child: TextFormField(
+                            controller: model.serverId,
+                            readOnly: true,
+                            decoration: InputDecoration(
+                              border: InputBorder.none,
+                              contentPadding: EdgeInsets.only(top: 4, bottom: 4),
+                              isDense: true,
+                            ),
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w600,
+                              color: PCNETColors.textPrimary,
+                            ),
+                          ).workaroundFreezeLinuxMint(),
+                        ),
+                        buildPopupMenu(context),
                       ],
                     ),
                   ),
-                  Flexible(
-                    child: GestureDetector(
-                      onDoubleTap: () {
-                        Clipboard.setData(
-                            ClipboardData(text: model.serverId.text));
-                        showToast(translate("Copied"));
-                      },
-                      child: TextFormField(
-                        controller: model.serverId,
-                        readOnly: true,
-                        decoration: InputDecoration(
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.only(top: 10, bottom: 10),
-                        ),
-                        style: TextStyle(
-                          fontSize: 22,
-                        ),
-                      ).workaroundFreezeLinuxMint(),
-                    ),
-                  )
                 ],
               ),
             ),
@@ -506,22 +455,19 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   }
 
   Widget buildPopupMenu(BuildContext context) {
-    final textColor = Theme.of(context).textTheme.titleLarge?.color;
     RxBool hover = false.obs;
     return InkWell(
+      borderRadius: BorderRadius.circular(4),
       onTap: DesktopTabPage.onAddSetting,
       child: Tooltip(
         message: translate('Settings'),
         child: Obx(
-          () => CircleAvatar(
-            radius: 15,
-            backgroundColor: hover.value
-                ? Theme.of(context).scaffoldBackgroundColor
-                : Theme.of(context).colorScheme.background,
+          () => Padding(
+            padding: EdgeInsets.all(4),
             child: Icon(
               Icons.more_vert_outlined,
-              size: 20,
-              color: hover.value ? textColor : textColor?.withOpacity(0.5),
+              size: 18,
+              color: hover.value ? PCNETColors.textPrimary : PCNETColors.textSecondary,
             ),
           ),
         ),
@@ -543,31 +489,34 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   buildPasswordBoard2(BuildContext context, ServerModel model) {
     RxBool refreshHover = false.obs;
     RxBool editHover = false.obs;
-    final textColor = Theme.of(context).textTheme.titleLarge?.color;
     final showOneTime = model.approveMode != 'click' &&
         model.verificationMethod != kUsePermanentPassword;
     return Container(
-      margin: EdgeInsets.only(left: 0, right: 0, top: 13, bottom: 13),
+      margin: EdgeInsets.only(left: 20, right: 20, top: 8, bottom: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.baseline,
         textBaseline: TextBaseline.alphabetic,
         children: [
           Container(
-            width: 2,
-            height: 52,
-            decoration: BoxDecoration(color: Color(0xFF00CC00)),
+            width: 3,
+            height: 48,
+            decoration: BoxDecoration(
+              color: PCNETColors.greenDark,
+              borderRadius: BorderRadius.circular(2),
+            ),
           ),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.only(left: 7),
+              padding: const EdgeInsets.only(left: 10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  AutoSizeText(
+                  Text(
                     translate("One-time Password"),
                     style: TextStyle(
-                        fontSize: 14, color: textColor?.withOpacity(0.5)),
-                    maxLines: 1,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: PCNETColors.textSecondary),
                   ),
                   Row(
                     children: [
@@ -586,9 +535,13 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                             decoration: InputDecoration(
                               border: InputBorder.none,
                               contentPadding:
-                                  EdgeInsets.only(top: 14, bottom: 10),
+                                  EdgeInsets.only(top: 4, bottom: 4),
+                              isDense: true,
                             ),
-                            style: TextStyle(fontSize: 15),
+                            style: TextStyle(
+                              fontSize: 15,
+                              color: PCNETColors.textPrimary,
+                            ),
                           ).workaroundFreezeLinuxMint(),
                         ),
                       ),
@@ -597,30 +550,32 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                           onPressed: () => bind.mainUpdateTemporaryPassword(),
                           child: Tooltip(
                             message: translate('Refresh Password'),
-                            child: Obx(() => RotatedBox(
-                                quarterTurns: 2,
-                                child: Icon(
+                            child: Obx(() => Icon(
                                   Icons.refresh,
                                   color: refreshHover.value
-                                      ? textColor
-                                      : Color(0xFFDDDDDD),
-                                  size: 22,
-                                ))),
+                                      ? PCNETColors.textPrimary
+                                      : PCNETColors.textSecondary,
+                                  size: 18,
+                                )),
                           ),
                           onHover: (value) => refreshHover.value = value,
-                        ).marginOnly(right: 8, top: 4),
+                        ).marginOnly(right: 4),
                       if (!bind.isDisableSettings())
                         InkWell(
+                          borderRadius: BorderRadius.circular(4),
                           child: Tooltip(
                             message: translate('Change Password'),
                             child: Obx(
-                              () => Icon(
-                                Icons.edit,
-                                color: editHover.value
-                                    ? textColor
-                                    : Color(0xFFDDDDDD),
-                                size: 22,
-                              ).marginOnly(right: 8, top: 4),
+                              () => Padding(
+                                padding: EdgeInsets.all(4),
+                                child: Icon(
+                                  Icons.edit_outlined,
+                                  color: editHover.value
+                                      ? PCNETColors.textPrimary
+                                      : PCNETColors.textSecondary,
+                                  size: 18,
+                                ),
+                              ),
                             ),
                           ),
                           onTap: () => DesktopSettingPage.switch2page(
@@ -750,22 +705,12 @@ class _DesktopHomePageState extends State<DesktopHomePage>
           bind.mainIsInstalledDaemon(prompt: true);
         });
       }
-      //// Disable microphone configuration for macOS. We will request the permission when needed.
-      // else if ((await osxCanRecordAudio() !=
-      //     PermissionAuthorizeType.authorized)) {
-      //   return buildInstallCard("Permissions", "config_microphone", "Configure",
-      //       () async {
-      //     osxRequestAudio();
-      //     watchIsCanRecordAudio = true;
-      //   });
-      // }
     } else if (isLinux) {
       if (bind.isOutgoingOnly()) {
         return Container();
       }
       final LinuxCards = <Widget>[];
       if (bind.isSelinuxEnforcing()) {
-        // Check is SELinux enforcing, but show user a tip of is SELinux enabled for simple.
         final keyShowSelinuxHelpTip = "show-selinux-help-tip";
         if (bind.mainGetLocalOption(key: keyShowSelinuxHelpTip) != 'N') {
           LinuxCards.add(buildInstallCard(
@@ -806,8 +751,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         alignment: Alignment.centerRight,
         child: OutlinedButton(
           onPressed: () {
-            SystemNavigator.pop(); // Close the application
-            // https://github.com/flutter/flutter/issues/66631
+            SystemNavigator.pop();
             if (isWindows) {
               exit(0);
             }
@@ -849,18 +793,12 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       children: [
         Container(
           margin: EdgeInsets.fromLTRB(
-              0, marginTop, 0, bind.isIncomingOnly() ? marginTop : 0),
+              12, marginTop, 12, bind.isIncomingOnly() ? marginTop : 0),
           child: Container(
               decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                colors: [
-                  Color.fromARGB(255, 226, 66, 188),
-                  Color.fromARGB(255, 244, 114, 124),
-                ],
-              )),
-              padding: EdgeInsets.all(20),
+                  color: PCNETColors.greenDark,
+                  borderRadius: BorderRadius.circular(8)),
+              padding: EdgeInsets.all(16),
               child: Column(
                   mainAxisAlignment: MainAxisAlignment.start,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -872,7 +810,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                                 style: TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 15),
+                                    fontSize: 14),
                               ).marginOnly(bottom: 6)),
                             ]
                           : <Widget>[]) +
@@ -884,8 +822,8 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                                 height: 1.5,
                                 color: Colors.white,
                                 fontWeight: FontWeight.normal,
-                                fontSize: 13),
-                          ).marginOnly(bottom: 20)
+                                fontSize: 12),
+                          ).marginOnly(bottom: 16)
                       ] +
                       (btnText.isNotEmpty
                           ? <Widget>[
@@ -899,8 +837,8 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                                       text: translate(btnText),
                                       textColor: Colors.white,
                                       borderColor: Colors.white,
-                                      textSize: 20,
-                                      radius: 10,
+                                      textSize: 16,
+                                      radius: 8,
                                       onTap: onPressed,
                                     )
                                   ])
@@ -926,12 +864,12 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         if (closeButton != null && closeButton == true)
           Positioned(
             top: 18,
-            right: 0,
+            right: 10,
             child: IconButton(
               icon: Icon(
                 Icons.close,
                 color: Colors.white,
-                size: 20,
+                size: 18,
               ),
               onPressed: closeCard,
             ),
@@ -970,10 +908,6 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       if (watchIsInputMonitoring) {
         if (bind.mainIsCanInputMonitoring(prompt: false)) {
           watchIsInputMonitoring = false;
-          // Do not notify for now.
-          // Monitoring may not take effect until the process is restarted.
-          // rustDeskWinManager.call(
-          //     WindowType.RemoteDesktop, kWindowDisableGrabKeyboard, '');
           setState(() {});
         }
       }
@@ -1164,7 +1098,6 @@ void setPasswordDialog({VoidCallback? notEmptyCallback}) async {
     DigitValidationRule(),
     UppercaseValidationRule(),
     LowercaseValidationRule(),
-    // SpecialCharacterValidationRule(),
     MinCharactersValidationRule(8),
   ];
   final maxLength = bind.mainMaxEncryptLen();

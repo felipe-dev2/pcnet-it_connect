@@ -251,16 +251,16 @@ class MyTheme {
   MyTheme._();
 
   static const Color grayBg = Color(0xFFEFEFF2);
-  static const Color accent = Color(0xFF00CC00);
-  static const Color accent50 = Color(0x7700CC00);
-  static const Color accent80 = Color(0xAA00CC00);
+  static const Color accent = Color(0xFF2ECC71);
+  static const Color accent50 = Color(0x772ECC71);
+  static const Color accent80 = Color(0xAA2ECC71);
   static const Color canvasColor = Color(0xFF212121);
   static const Color border = Color(0xFFCCCCCC);
-  static const Color idColor = Color(0xFF00CC00);
+  static const Color idColor = Color(0xFF2ECC71);
   static const Color darkGray = Color.fromARGB(255, 148, 148, 148);
   static const Color cmIdColor = Color(0xFF21790B);
   static const Color dark = Colors.black87;
-  static const Color button = Color(0xFF00CC00);
+  static const Color button = Color(0xFF2ECC71);
   static const Color hoverBorder = Color(0xFF999999);
 
   // ListTile
@@ -454,7 +454,7 @@ class MyTheme {
         style:
             MenuStyle(backgroundColor: MaterialStatePropertyAll(Colors.white))),
     colorScheme: ColorScheme.light(
-        primary: Color(0xFF00CC00), secondary: accent, background: grayBg),
+        primary: Color(0xFF2ECC71), secondary: accent, background: grayBg),
     popupMenuTheme: PopupMenuThemeData(
         color: Colors.white,
         shape: RoundedRectangleBorder(
@@ -562,7 +562,7 @@ class MyTheme {
         style: MenuStyle(
             backgroundColor: MaterialStatePropertyAll(Color(0xFF121212)))),
     colorScheme: ColorScheme.dark(
-      primary: Color(0xFF00CC00),
+      primary: Color(0xFF2ECC71),
       secondary: accent,
       background: Color(0xFF24252B),
     ),
@@ -1269,7 +1269,7 @@ Color? _msgboxColor(String type) {
   if (type.contains("error") || type == "re-input-password") {
     return Color(0xFFE04F5F);
   }
-  return Color(0xFF00CC00);
+  return Color(0xFF2ECC71);
 }
 
 Widget msgboxIcon(String type) {
