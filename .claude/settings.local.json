@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(flutter --version:*)",
+      "Bash(cargo --version:*)",
+      "Bash(export PATH=\"/opt/flutter/bin:$PATH\")",
+      "Bash(flutter doctor:*)",
+      "Bash(chown:*)",
+      "Bash(echo:*)",
+      "Bash(./bootstrap-vcpkg.sh:*)",
+      "Bash(brew:*)",
+      "Bash(apt-get update:*)",
+      "Bash(apt-get install:*)",
+      "Bash(export:*)",
+      "Bash($VCPKG_ROOT/vcpkg install --x-install-root=\"$VCPKG_ROOT/installed\")",
+      "Bash(git init:*)",
+      "Bash(git config:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}

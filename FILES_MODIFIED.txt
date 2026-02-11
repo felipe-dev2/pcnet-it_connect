@@ -1,0 +1,109 @@
+=================================================================
+PCNET-IT Connect - RustDesk Customization
+Visual: Preto e Verde Neon
+Data: 2026-02-10
+=================================================================
+
+ARQUIVOS CRIADOS:
+-----------------------------------------------------------------
+
+1. /opt/pcnet-it-connect/rustdesk/flutter/lib/common/pcnet_colors.dart
+   - Paleta completa de cores PCNET
+   - Gradientes e efeitos neon
+   - Status: NOVO
+
+2. /opt/pcnet-it-connect/rustdesk/PCNET_CUSTOMIZATION_SUMMARY.md
+   - Documentação completa das modificações
+   - Status: NOVO
+
+3. /opt/pcnet-it-connect/rustdesk/PCNET_COLOR_REFERENCE.md
+   - Referência de cores e aplicações
+   - Status: NOVO
+
+4. /opt/pcnet-it-connect/rustdesk/BUILD_INSTRUCTIONS.md
+   - Instruções de build e troubleshooting
+   - Status: NOVO
+
+-----------------------------------------------------------------
+ARQUIVOS MODIFICADOS:
+-----------------------------------------------------------------
+
+5. /opt/pcnet-it-connect/rustdesk/flutter/lib/common/widgets/connection_page_title.dart
+   - Texto alterado para "Inserir ID PCNET-IT Connect"
+   - Cores verde neon aplicadas
+   - Backup: connection_page_title.dart.backup
+   - Status: MODIFICADO
+
+6. /opt/pcnet-it-connect/rustdesk/flutter/lib/desktop/pages/connection_page.dart
+   - Sidebar removida
+   - Campo de conexão centralizado
+   - Cores PCNET aplicadas em todos os elementos
+   - Efeitos neon adicionados
+   - Textos personalizados
+   - Backup: connection_page.dart.backup
+   - Status: MODIFICADO
+
+-----------------------------------------------------------------
+BACKUPS CRIADOS:
+-----------------------------------------------------------------
+
+7. /opt/pcnet-it-connect/rustdesk/flutter/lib/desktop/pages/connection_page.dart.backup
+   - Backup do arquivo original
+   - Status: BACKUP
+
+8. /opt/pcnet-it-connect/rustdesk/flutter/lib/common/widgets/connection_page_title.dart.backup
+   - Backup do arquivo original
+   - Status: BACKUP
+
+=================================================================
+PRINCIPAIS MODIFICAÇÕES:
+=================================================================
+
+LAYOUT:
+  ✓ Sidebar esquerda REMOVIDA
+  ✓ Campo de conexão CENTRALIZADO
+  ✓ Background gradiente (preto → cinza escuro)
+  ✓ Espaçamento aumentado
+
+TEXTOS:
+  ✓ "Control Remote Desktop" → "Inserir ID PCNET-IT Connect"
+  ✓ "Enter Remote ID" → "Digite o ID de conexão"
+  ✓ "Connect" → "Conectar"
+
+CORES:
+  ✓ Verde neon (#00FF00) - cor primária
+  ✓ Preto (#000000) - fundo principal
+  ✓ Cinza escuro (#1a1a1a, #2a2a2a) - elementos secundários
+  ✓ Branco (#FFFFFF) - texto principal
+
+EFEITOS:
+  ✓ Neon glow em containers
+  ✓ Neon glow no indicador de status online
+  ✓ Bordas verde neon
+  ✓ Sombras personalizadas
+
+=================================================================
+PRÓXIMOS PASSOS:
+=================================================================
+
+1. cd /opt/pcnet-it-connect/rustdesk/flutter
+2. flutter pub get
+3. flutter analyze (verificar erros)
+4. flutter run -d linux (testar)
+5. flutter build linux --release (build produção)
+
+=================================================================
+ROLLBACK:
+=================================================================
+
+Para reverter todas as modificações:
+
+cp /opt/pcnet-it-connect/rustdesk/flutter/lib/desktop/pages/connection_page.dart.backup \
+   /opt/pcnet-it-connect/rustdesk/flutter/lib/desktop/pages/connection_page.dart
+
+cp /opt/pcnet-it-connect/rustdesk/flutter/lib/common/widgets/connection_page_title.dart.backup \
+   /opt/pcnet-it-connect/rustdesk/flutter/lib/common/widgets/connection_page_title.dart
+
+rm /opt/pcnet-it-connect/rustdesk/flutter/lib/common/pcnet_colors.dart
+
+=================================================================
