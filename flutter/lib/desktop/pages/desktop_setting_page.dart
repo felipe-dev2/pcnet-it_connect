@@ -26,6 +26,7 @@ import 'package:url_launcher/url_launcher_string.dart';
 
 import '../../common/widgets/dialog.dart';
 import '../../common/widgets/login.dart';
+import '../../common/pcnet_colors.dart';
 
 const double _kTabWidth = 200;
 const double _kTabHeight = 42;
@@ -2294,79 +2295,326 @@ class _AboutState extends State<_About> {
         'fingerprint': fingerprint
       };
     }(), hasData: (data) {
-      final license = data['license'].toString();
       final version = data['version'].toString();
       final buildDate = data['buildDate'].toString();
       final fingerprint = data['fingerprint'].toString();
-      const linkStyle = TextStyle(decoration: TextDecoration.underline);
       final scrollController = ScrollController();
+
       return SingleChildScrollView(
         controller: scrollController,
-        child: _Card(title: translate('About RustDesk'), children: [
+        child: _Card(title: 'Sobre PCNET-IT Connect', children: [
           Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(
-                height: 8.0,
+              const SizedBox(height: 16),
+
+              // Banner Section
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.asset(
+                  'assets/pcnet-banner.png',
+                  fit: BoxFit.fitWidth,
+                ),
               ),
-              SelectionArea(
-                  child: Text('${translate('Version')}: $version')
-                      .marginSymmetric(vertical: 4.0)),
-              SelectionArea(
-                  child: Text('${translate('Build Date')}: $buildDate')
-                      .marginSymmetric(vertical: 4.0)),
-              if (!isWeb)
-                SelectionArea(
-                    child: Text('${translate('Fingerprint')}: $fingerprint')
-                        .marginSymmetric(vertical: 4.0)),
-              InkWell(
-                  onTap: () {
-                    launchUrlString('https://rustdesk.com/privacy.html');
-                  },
-                  child: Text(
-                    translate('Privacy Statement'),
-                    style: linkStyle,
-                  ).marginSymmetric(vertical: 4.0)),
-              InkWell(
-                  onTap: () {
-                    launchUrlString('https://rustdesk.com');
-                  },
-                  child: Text(
-                    translate('Website'),
-                    style: linkStyle,
-                  ).marginSymmetric(vertical: 4.0)),
+
+              const SizedBox(height: 16),
+
+              // Version Information Section
               Container(
-                decoration: const BoxDecoration(color: Color(0xFF2c8cff)),
-                padding:
-                    const EdgeInsets.symmetric(vertical: 24, horizontal: 8),
-                child: SelectionArea(
-                    child: Row(
+                decoration: BoxDecoration(
+                  color: PCNETColors.grayDark,
+                  border: Border.all(color: PCNETColors.greenDark, width: 1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
+                    const Text(
+                      'Informações da Versão',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildInfoRow('Versão:', version),
+                    const SizedBox(height: 8),
+                    _buildInfoRow('Revisão:', 'Build $buildDate'),
+                    const SizedBox(height: 8),
+                    _buildInfoRow('Licença:', 'Versão Profissional'),
+                    const SizedBox(height: 8),
+                    _buildInfoRow('Atualização:', 'Atualizado', valueColor: PCNETColors.greenDark),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () {
+                              launchUrlString('https://www.pcnet-it.com.br/changelog');
+                            },
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: PCNETColors.greenDark,
+                              side: const BorderSide(color: PCNETColors.greenDark),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            child: const Text('Changelog'),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () {
+                              launchUrlString('https://www.pcnet-it.com.br/atualizacoes');
+                            },
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: PCNETColors.greenDark,
+                              side: const BorderSide(color: PCNETColors.greenDark),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            child: const Text('Verificar Atualizações'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Copyright Section
+              Container(
+                decoration: BoxDecoration(
+                  color: PCNETColors.greenDark,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: const [
+                    Text(
+                      'Copyright 2026 PCNET-IT. Todos os direitos reservados.',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        fontSize: 14,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Desenvolvido por PCNET-IT Solutions',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Two Column Section - Support and Security
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Left Column - Support Information
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: PCNETColors.grayDark,
+                        border: Border.all(color: PCNETColors.greenDark, width: 1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.all(16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'Copyright © ${DateTime.now().toString().substring(0, 4)} Purslane Ltd.\n$license',
-                            style: const TextStyle(color: Colors.white),
+                          Row(
+                            children: const [
+                              Icon(Icons.support_agent, color: PCNETColors.greenDark, size: 20),
+                              SizedBox(width: 8),
+                              Text(
+                                'Informações de Suporte',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: PCNETColors.greenDark,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ],
                           ),
-                          Text(
-                            translate('Slogan_tip'),
-                            style: TextStyle(
-                                fontWeight: FontWeight.w800,
-                                color: Colors.white),
-                          )
+                          const SizedBox(height: 12),
+                          const Text(
+                            'Site: www.pcnet-it.com.br',
+                            style: TextStyle(color: Colors.white, fontSize: 13),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Email: pcnet@pcnet-it.com.br',
+                            style: TextStyle(color: Colors.white, fontSize: 13),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Tel: (41) 3046 4400',
+                            style: TextStyle(color: Colors.white, fontSize: 13),
+                          ),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton(
+                              onPressed: () {
+                                launchUrlString('https://www.pcnet-it.com.br/suporte');
+                              },
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: PCNETColors.greenDark,
+                                side: const BorderSide(color: PCNETColors.greenDark),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              child: const Text('Suporte Online'),
+                            ),
+                          ),
                         ],
                       ),
                     ),
-                  ],
-                )),
-              ).marginSymmetric(vertical: 4.0)
+                  ),
+
+                  const SizedBox(width: 16),
+
+                  // Right Column - Security Information
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: PCNETColors.grayDark,
+                        border: Border.all(color: PCNETColors.greenDark, width: 1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: const [
+                              Icon(Icons.security, color: PCNETColors.greenDark, size: 20),
+                              SizedBox(width: 8),
+                              Text(
+                                'Informações de Segurança',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: PCNETColors.greenDark,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          const Text(
+                            'Criptografia: TLS 1.3 / AES-256',
+                            style: TextStyle(color: Colors.white, fontSize: 13),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Autenticação: RSA 2048-bit',
+                            style: TextStyle(color: Colors.white, fontSize: 13),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Conexão: P2P com WebRTC',
+                            style: TextStyle(color: Colors.white, fontSize: 13),
+                          ),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton(
+                              onPressed: () {
+                                launchUrlString('https://www.pcnet-it.com.br/seguranca');
+                              },
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: PCNETColors.greenDark,
+                                side: const BorderSide(color: PCNETColors.greenDark),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              child: const Text('Detalhes'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 16),
+
+              // Privacy and Website Links
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  InkWell(
+                    onTap: () {
+                      launchUrlString('https://www.pcnet-it.com.br/privacidade');
+                    },
+                    child: const Text(
+                      'Política de Privacidade',
+                      style: TextStyle(
+                        decoration: TextDecoration.underline,
+                        color: PCNETColors.greenDark,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 24),
+                  InkWell(
+                    onTap: () {
+                      launchUrlString('https://www.pcnet-it.com.br');
+                    },
+                    child: const Text(
+                      'Website',
+                      style: TextStyle(
+                        decoration: TextDecoration.underline,
+                        color: PCNETColors.greenDark,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 16),
             ],
-          ).marginOnly(left: _kContentHMargin)
+          ).marginOnly(left: _kContentHMargin, right: _kContentHMargin),
         ]),
       );
     });
+  }
+
+  Widget _buildInfoRow(String label, String value, {Color? valueColor}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(color: Colors.white, fontSize: 14),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            color: valueColor ?? PCNETColors.greenDark,
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+          ),
+        ),
+      ],
+    );
   }
 }
 

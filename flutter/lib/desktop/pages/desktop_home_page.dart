@@ -60,20 +60,270 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   Widget build(BuildContext context) {
     super.build(context);
     final isIncomingOnly = bind.isIncomingOnly();
+    final isOutgoingOnly = bind.isOutgoingOnly();
     return _buildBlock(
-        child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        buildLeftPane(context),
-        if (!isIncomingOnly) const VerticalDivider(width: 1),
-        if (!isIncomingOnly) Expanded(child: buildRightPane(context)),
-      ],
+        child: Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF0a0a0a), Color(0xFF1a1a1a)],
+        ),
+      ),
+      child: Column(
+        children: [
+          // Top bar with logo + app name + settings
+          _buildTopBar(context),
+          // Main content
+          Expanded(
+            child: SingleChildScrollView(
+              controller: _leftPaneScrollController,
+              child: Column(
+                children: [
+                  SizedBox(height: 20),
+                  // Center card with ID info + connection
+                  _buildCenterCard(context, isOutgoingOnly),
+                  SizedBox(height: 20),
+                  // Peers section
+                  if (!isIncomingOnly)
+                    Container(
+                      constraints: BoxConstraints(maxWidth: 900),
+                      padding: EdgeInsets.symmetric(horizontal: 24),
+                      child: ConnectionPage(),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          // Status bar at bottom
+          if (!isIncomingOnly)
+            OnlineStatusWidget().marginOnly(bottom: 6, left: 12, right: 12),
+        ],
+      ),
     ));
   }
 
   Widget _buildBlock({required Widget child}) {
     return buildRemoteBlock(
         block: _block, mask: true, use: canBeBlocked, child: child);
+  }
+
+  Widget _buildTopBar(BuildContext context) {
+    final textColor = Theme.of(context).textTheme.titleLarge?.color;
+    return Container(
+      height: 50,
+      decoration: BoxDecoration(
+        color: Color(0xFF111111),
+      ),
+      padding: EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // Left: Logo
+          Container(
+            width: 36,
+            height: 36,
+            child: Image.asset(
+              'assets/icon.png',
+              fit: BoxFit.contain,
+              errorBuilder: (ctx, error, stackTrace) => Container(),
+            ),
+          ),
+          // Center: App Name
+          Text(
+            'PCNET-IT Connect',
+            style: TextStyle(
+              color: Color(0xFF00CC00),
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          // Right: Settings Icon
+          InkWell(
+            child: Obx(
+              () => Icon(
+                Icons.settings,
+                color: _editHover.value ? textColor : Colors.grey.withOpacity(0.5),
+                size: 22,
+              ),
+            ),
+            onTap: () => {
+              if (DesktopSettingPage.tabKeys.isNotEmpty)
+                {
+                  DesktopSettingPage.switch2page(DesktopSettingPage.tabKeys[0])
+                }
+            },
+            onHover: (value) => _editHover.value = value,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCenterCard(BuildContext context, bool isOutgoingOnly) {
+    return Container(
+      constraints: BoxConstraints(maxWidth: 500),
+      margin: EdgeInsets.symmetric(horizontal: 24),
+      decoration: BoxDecoration(
+        color: Color(0xFF1a1a1a),
+        border: Border.all(
+          color: Color(0xFF00CC00).withOpacity(0.3),
+          width: 1,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0xFF00CC00).withOpacity(0.1),
+            blurRadius: 20,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
+      padding: EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Logo
+          loadLogo(),
+          SizedBox(height: 16),
+          // Divider
+          Container(
+            height: 1,
+            color: Color(0xFF00CC00).withOpacity(0.3),
+          ),
+          SizedBox(height: 16),
+          // "Seu Computador" Section Title
+          if (!isOutgoingOnly)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Seu Computador',
+                style: TextStyle(
+                  color: Color(0xFF00CC00),
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          if (!isOutgoingOnly) SizedBox(height: 12),
+          // Preset Password Warning
+          if (!isOutgoingOnly) buildPresetPasswordWarning(),
+          // ID Board
+          if (!isOutgoingOnly) _buildIDBoard(context),
+          // Password Board
+          if (!isOutgoingOnly) buildPasswordBoard(context),
+          // Divider
+          if (!isOutgoingOnly) SizedBox(height: 16),
+          if (!isOutgoingOnly)
+            Container(
+              height: 1,
+              color: Color(0xFF00CC00).withOpacity(0.3),
+            ),
+          if (!isOutgoingOnly) SizedBox(height: 16),
+          // Connection Section Title
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Conectar',
+              style: TextStyle(
+                color: Color(0xFF00CC00),
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          SizedBox(height: 12),
+          // Connection input (simplified - you may want to integrate the full ConnectionPage input here)
+          Text(
+            translate(isOutgoingOnly ? 'outgoing_only_desk_tip' : 'desk_tip'),
+            style: Theme.of(context).textTheme.bodySmall,
+            textAlign: TextAlign.center,
+          ),
+          // Help Cards
+          FutureBuilder<Widget>(
+            future: Future.value(
+                Obx(() => buildHelpCards(stateGlobal.updateUrl.value))),
+            builder: (_, data) {
+              if (data.hasData) {
+                return data.data!;
+              } else {
+                return const Offstage();
+              }
+            },
+          ),
+          // Plugin Entry
+          buildPluginEntry(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIDBoard(BuildContext context) {
+    final model = gFFI.serverModel;
+    return Container(
+      margin: const EdgeInsets.only(left: 0, right: 0, top: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.baseline,
+        textBaseline: TextBaseline.alphabetic,
+        children: [
+          Container(
+            width: 2,
+            height: 52,
+            decoration: const BoxDecoration(color: Color(0xFF00CC00)),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(left: 7),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    height: 25,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          translate("ID"),
+                          style: TextStyle(
+                              fontSize: 14,
+                              color: Theme.of(context)
+                                  .textTheme
+                                  .titleLarge
+                                  ?.color
+                                  ?.withOpacity(0.5)),
+                        ).marginOnly(top: 5),
+                        buildPopupMenu(context)
+                      ],
+                    ),
+                  ),
+                  Flexible(
+                    child: GestureDetector(
+                      onDoubleTap: () {
+                        Clipboard.setData(
+                            ClipboardData(text: model.serverId.text));
+                        showToast(translate("Copied"));
+                      },
+                      child: TextFormField(
+                        controller: model.serverId,
+                        readOnly: true,
+                        decoration: InputDecoration(
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.only(top: 10, bottom: 10),
+                        ),
+                        style: TextStyle(
+                          fontSize: 22,
+                        ),
+                      ).workaroundFreezeLinuxMint(),
+                    ),
+                  )
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget buildLeftPane(BuildContext context) {
@@ -297,7 +547,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     final showOneTime = model.approveMode != 'click' &&
         model.verificationMethod != kUsePermanentPassword;
     return Container(
-      margin: EdgeInsets.only(left: 20.0, right: 16, top: 13, bottom: 13),
+      margin: EdgeInsets.only(left: 0, right: 0, top: 13, bottom: 13),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.baseline,
         textBaseline: TextBaseline.alphabetic,
@@ -305,7 +555,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
           Container(
             width: 2,
             height: 52,
-            decoration: BoxDecoration(color: MyTheme.accent),
+            decoration: BoxDecoration(color: Color(0xFF00CC00)),
           ),
           Expanded(
             child: Padding(
