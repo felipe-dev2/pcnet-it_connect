@@ -1,4 +1,4 @@
-name: PCNET Build (Windows + macOS)
+name: PCNET Build (Windows + macOS Intel/ARM)
 
 on:
   workflow_dispatch:
@@ -237,5 +237,105 @@ jobs:
         uses: actions/upload-artifact@master
         with:
           name: pcnet-macos-arm64
+          path: ./flutter/build/macos/Build/Products/Release/
+          if-no-files-found: ignore
+
+  build-macos-intel:
+    name: macOS x86_64 (Intel)
+    needs: [generate-bridge]
+    runs-on: macos-15-intel
+    steps:
+      - name: Export GitHub Actions cache environment variables
+        uses: actions/github-script@v6
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Restore bridge files
+        uses: actions/download-artifact@master
+        with:
+          name: bridge-artifact
+          path: ./
+
+      - name: Install build dependencies
+        run: |
+          brew install llvm create-dmg
+          if command -v pkg-config &>/dev/null; then
+            echo "pkg-config is already installed"
+          else
+            brew install pkg-config
+          fi
+
+      - name: Install NASM 2.x
+        run: |
+          # NASM 2.x is required - brew install nasm gives 3.x which is incompatible
+          wget https://www.nasm.us/pub/nasm/releasebuilds/2.16.03/macosx/nasm-2.16.03-macosx.zip
+          unzip nasm-2.16.03-macosx.zip
+          sudo cp nasm-2.16.03/nasm /usr/local/bin/nasm
+          nasm --version
+
+      - name: Install flutter
+        uses: subosito/flutter-action@v2.12.0
+        with:
+          channel: "stable"
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+
+      - name: Patch flutter
+        run: |
+          cp .github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff $(dirname $(dirname $(which flutter)))
+          cd $(dirname $(dirname $(which flutter)))
+          [[ "3.24.5" == ${{env.FLUTTER_VERSION}} ]] && git apply flutter_3.24.4_dropdown_menu_enableFilter.diff
+
+      - name: Workaround for flutter issue
+        shell: bash
+        run: |
+          cd "$(dirname "$(which flutter)")"
+          # https://github.com/flutter/flutter/issues/133533
+          sed -i -e 's/_setFramesEnabledState(false);/\/\/_setFramesEnabledState(false);/g' ../packages/flutter/lib/src/scheduler/binding.dart
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: ${{ env.MAC_RUST_VERSION }}
+          targets: x86_64-apple-darwin
+          components: "rustfmt"
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: macos-15-intel
+
+      - name: Setup vcpkg with Github Actions binary cache
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
+          doNotCache: false
+
+      - name: Install vcpkg dependencies
+        run: |
+          if ! $VCPKG_ROOT/vcpkg \
+            install \
+            --triplet x64-osx \
+            --x-install-root="$VCPKG_ROOT/installed"; then
+            find "${VCPKG_ROOT}/" -name "*.log" | while read -r _1; do
+              echo "$_1:"
+              cat "$_1"
+            done
+            exit 1
+          fi
+        shell: bash
+
+      - name: Build rustdesk
+        run: |
+          ./build.py --flutter --hwcodec
+
+      - name: Upload macOS Intel app
+        if: always()
+        uses: actions/upload-artifact@master
+        with:
+          name: pcnet-macos-x86_64
           path: ./flutter/build/macos/Build/Products/Release/
           if-no-files-found: ignore
