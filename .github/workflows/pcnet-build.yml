@@ -111,6 +111,16 @@ jobs:
           python3 .\build.py --portable --hwcodec --flutter --vram --skip-portable-pack
           mv ./flutter/build/windows/x64/runner/Release ./rustdesk
 
+      - name: find Runner.res
+        continue-on-error: true
+        shell: bash
+        run: |
+          runner_res=$(find . -name "Runner.res");
+          if [ "$runner_res" != "" ]; then
+            echo "Runner.res: $runner_res";
+            cp $runner_res ./libs/portable/Runner.res;
+          fi
+
       - name: Download RustDeskTempTopMostWindow artifacts
         uses: actions/download-artifact@master
         with:
@@ -129,16 +139,20 @@ jobs:
           mv ./target/release/rustdesk-portable-packer.exe ./SignOutput/rustdesk-${{ env.VERSION }}-x86_64.exe
 
       - name: Upload Windows installer
+        if: always()
         uses: actions/upload-artifact@master
         with:
           name: pcnet-windows-x86_64-installer
           path: ./SignOutput/rustdesk-*.exe
+          if-no-files-found: ignore
 
-      - name: Upload Windows unsigned
+      - name: Upload Windows portable
+        if: always()
         uses: actions/upload-artifact@master
         with:
-          name: pcnet-windows-x86_64-unsigned
+          name: pcnet-windows-x86_64-portable
           path: rustdesk
+          if-no-files-found: ignore
 
   build-macos-arm:
     name: macOS ARM64 (Apple Silicon)
@@ -161,11 +175,21 @@ jobs:
           name: bridge-artifact
           path: ./
 
+      - name: Install build dependencies
+        run: |
+          brew install nasm yasm
+
       - name: Install flutter
         uses: subosito/flutter-action@v2.12.0
         with:
           channel: "stable"
           flutter-version: ${{ env.FLUTTER_VERSION }}
+
+      - name: Replace engine with rustdesk custom flutter engine
+        run: |
+          flutter precache --macos
+          wget https://github.com/aspect-build/rules_lint/files/14820642/macos-arm64-release.zip -O macos-arm64-release.zip || true
+          # Use default engine if custom not available
 
       - name: Patch flutter
         run: |
@@ -206,11 +230,12 @@ jobs:
 
       - name: Build rustdesk
         run: |
-          MACOSX_DEPLOYMENT_TARGET=12.3 ./build.py --flutter --hwcodec
+          MACOSX_DEPLOYMENT_TARGET=12.3 ./build.py --flutter --hwcodec --screencapturekit
 
       - name: Upload macOS app
+        if: always()
         uses: actions/upload-artifact@master
         with:
           name: pcnet-macos-arm64
-          path: |
-            ./flutter/build/macos/Build/Products/Release/RustDesk.app
+          path: ./flutter/build/macos/Build/Products/Release/
+          if-no-files-found: ignore
