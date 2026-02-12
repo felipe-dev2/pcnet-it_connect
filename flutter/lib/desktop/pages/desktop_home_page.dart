@@ -38,8 +38,6 @@ const borderColor = Color(0xFF2F65BA);
 
 class _DesktopHomePageState extends State<DesktopHomePage>
     with AutomaticKeepAliveClientMixin, WidgetsBindingObserver {
-  final _leftPaneScrollController = ScrollController();
-
   @override
   bool get wantKeepAlive => true;
   var systemError = '';
@@ -52,10 +50,11 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   Timer? _updateTimer;
   bool isCardClosed = false;
 
-  final RxBool _editHover = false.obs;
+  final RxBool _settingsHover = false.obs;
   final RxBool _block = false.obs;
 
   final GlobalKey _childKey = GlobalKey();
+  final _leftPaneScrollController = ScrollController();
 
   @override
   Widget build(BuildContext context) {
@@ -65,18 +64,27 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     return _buildBlock(
         child: Container(
       color: PCNETColors.blackPrimary,
-      child: Row(
+      child: Column(
         children: [
-          // Left panel - Device info
+          // Top header bar
+          _buildHeaderBar(context),
+          // Device info section (horizontal cards)
           if (!isOutgoingOnly)
-            _buildLeftPanel(context),
-          // Vertical divider
+            ChangeNotifierProvider.value(
+              value: gFFI.serverModel,
+              child: _buildDeviceSection(context),
+            ),
+          // Help/install banners
           if (!isOutgoingOnly)
-            Container(width: 1, color: PCNETColors.dividerColor),
-          // Right panel - Connection + Peers
-          Expanded(
-            child: _buildRightPanel(context, isIncomingOnly, isOutgoingOnly),
-          ),
+            ChangeNotifierProvider.value(
+              value: gFFI.serverModel,
+              child: _buildHelpBanners(context),
+            ),
+          // Connection page (input + peers) - takes all remaining space
+          Expanded(child: ConnectionPage()),
+          // Status bar at bottom
+          Container(height: 1, color: PCNETColors.dividerColor),
+          _buildStatusBar(context),
         ],
       ),
     ));
@@ -87,112 +95,37 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         block: _block, mask: true, use: canBeBlocked, child: child);
   }
 
-  /// Left panel: Device info (ID, Password, Status)
-  Widget _buildLeftPanel(BuildContext context) {
-    return ChangeNotifierProvider.value(
-      value: gFFI.serverModel,
-      child: Container(
-        width: 260,
+  /// Compact header bar with logo, name, and settings
+  Widget _buildHeaderBar(BuildContext context) {
+    return Container(
+      height: 48,
+      padding: EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
         color: PCNETColors.surfaceColor,
-        child: Column(
-          children: [
-            // Header with logo and name
-            _buildLeftHeader(context),
-            Divider(height: 1, color: PCNETColors.dividerColor),
-            // Device info section
-            Expanded(
-              child: SingleChildScrollView(
-                controller: _leftPaneScrollController,
-                child: Column(
-                  key: _childKey,
-                  children: [
-                    SizedBox(height: 16),
-                    // "This Device" label
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 20),
-                      child: Row(
-                        children: [
-                          Icon(Icons.computer, size: 16, color: PCNETColors.textSecondary),
-                          SizedBox(width: 8),
-                          Text(
-                            translate('Your Desktop'),
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: PCNETColors.textSecondary,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(height: 12),
-                    // ID Board
-                    buildIDBoard(context),
-                    // Password Board
-                    buildPasswordBoard(context),
-                    SizedBox(height: 16),
-                    // Preset Password Warning
-                    buildPresetPasswordWarning(),
-                    // Help Cards
-                    FutureBuilder<Widget>(
-                      future: Future.value(
-                          Obx(() => buildHelpCards(stateGlobal.updateUrl.value))),
-                      builder: (_, data) {
-                        if (data.hasData) {
-                          if (bind.isIncomingOnly()) {
-                            if (isInHomePage()) {
-                              Future.delayed(Duration(milliseconds: 300), () {
-                                _updateWindowSize();
-                              });
-                            }
-                          }
-                          return data.data!;
-                        } else {
-                          return const Offstage();
-                        }
-                      },
-                    ),
-                    buildPluginEntry(),
-                  ],
-                ),
-              ),
-            ),
-            // Status bar at bottom of left panel
-            Divider(height: 1, color: PCNETColors.dividerColor),
-            _buildStatusBar(context),
-          ],
+        border: Border(
+          bottom: BorderSide(color: PCNETColors.dividerColor, width: 1),
         ),
       ),
-    );
-  }
-
-  /// Header with logo + app name + settings button
-  Widget _buildLeftHeader(BuildContext context) {
-    return Container(
-      height: 56,
-      padding: EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
           // Logo
           Container(
-            width: 32,
-            height: 32,
-            child: loadIcon(32),
+            width: 28,
+            height: 28,
+            child: loadIcon(28),
           ),
           SizedBox(width: 10),
           // App Name
-          Expanded(
-            child: Text(
-              'PCNET-IT Connect',
-              style: TextStyle(
-                color: PCNETColors.greenPrimary,
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-              ),
-              overflow: TextOverflow.ellipsis,
+          Text(
+            'PCNET-IT Connect',
+            style: TextStyle(
+              color: PCNETColors.greenPrimary,
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.3,
             ),
           ),
+          Spacer(),
           // Settings button
           _buildSettingsButton(context),
         ],
@@ -209,7 +142,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
           padding: EdgeInsets.all(6),
           child: Icon(
             Icons.settings_outlined,
-            color: _editHover.value ? textColor : PCNETColors.textSecondary,
+            color: _settingsHover.value ? textColor : PCNETColors.textSecondary,
             size: 20,
           ),
         ),
@@ -220,421 +153,273 @@ class _DesktopHomePageState extends State<DesktopHomePage>
             DesktopSettingPage.switch2page(DesktopSettingPage.tabKeys[0])
           }
       },
-      onHover: (value) => _editHover.value = value,
+      onHover: (value) => _settingsHover.value = value,
     );
   }
 
-  /// Status bar at bottom of left panel
-  Widget _buildStatusBar(BuildContext context) {
+  /// Horizontal device info section with two cards side by side
+  Widget _buildDeviceSection(BuildContext context) {
     return Container(
-      height: 36,
-      padding: EdgeInsets.symmetric(horizontal: 16),
-      child: OnlineStatusWidget(),
-    );
-  }
-
-  /// Right panel: Connection input + Peers
-  Widget _buildRightPanel(BuildContext context, bool isIncomingOnly, bool isOutgoingOnly) {
-    if (isOutgoingOnly) {
-      return Column(
-        children: [
-          _buildOutgoingOnlyHeader(context),
-          Divider(height: 1, color: PCNETColors.dividerColor),
-          Expanded(child: ConnectionPage()),
-        ],
-      );
-    }
-    return ConnectionPage();
-  }
-
-  Widget _buildOutgoingOnlyHeader(BuildContext context) {
-    return Container(
-      height: 56,
-      color: PCNETColors.surfaceColor,
-      padding: EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.fromLTRB(16, 12, 16, 12),
+      decoration: BoxDecoration(
+        color: PCNETColors.surfaceColor,
+        border: Border(
+          bottom: BorderSide(color: PCNETColors.dividerColor, width: 1),
+        ),
+      ),
       child: Row(
         children: [
-          Container(
-            width: 32,
-            height: 32,
-            child: loadIcon(32),
-          ),
-          SizedBox(width: 10),
-          Text(
-            'PCNET-IT Connect',
-            style: TextStyle(
-              color: PCNETColors.greenPrimary,
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          Spacer(),
-          _buildSettingsButton(context),
+          // ID Card
+          Expanded(child: _buildIDCard(context)),
+          SizedBox(width: 12),
+          // Password Card
+          Expanded(child: _buildPasswordCard(context)),
         ],
       ),
     );
   }
 
-  // ============ Legacy methods kept for compatibility ============
+  /// Compact ID card
+  Widget _buildIDCard(BuildContext context) {
+    final model = gFFI.serverModel;
+    RxBool copyHover = false.obs;
+    RxBool menuHover = false.obs;
+    return Container(
+      padding: EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: PCNETColors.grayDark,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: PCNETColors.borderColor, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.computer_outlined, size: 14, color: PCNETColors.greenPrimary),
+              SizedBox(width: 6),
+              Text(
+                "ID",
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: PCNETColors.textSecondary,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 6),
+          Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onDoubleTap: () {
+                    Clipboard.setData(
+                        ClipboardData(text: model.serverId.text));
+                    showToast(translate("Copied"));
+                  },
+                  child: TextFormField(
+                    controller: model.serverId,
+                    readOnly: true,
+                    decoration: InputDecoration(
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.zero,
+                      isDense: true,
+                    ),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: PCNETColors.textPrimary,
+                      letterSpacing: 1,
+                    ),
+                  ).workaroundFreezeLinuxMint(),
+                ),
+              ),
+              InkWell(
+                borderRadius: BorderRadius.circular(4),
+                onTap: () {
+                  Clipboard.setData(
+                      ClipboardData(text: model.serverId.text));
+                  showToast(translate("Copied"));
+                },
+                child: Obx(() => Padding(
+                  padding: EdgeInsets.all(4),
+                  child: Icon(
+                    Icons.copy_outlined,
+                    size: 16,
+                    color: copyHover.value ? PCNETColors.greenPrimary : PCNETColors.textSecondary,
+                  ),
+                )),
+                onHover: (value) => copyHover.value = value,
+              ),
+              SizedBox(width: 2),
+              InkWell(
+                borderRadius: BorderRadius.circular(4),
+                onTap: DesktopTabPage.onAddSetting,
+                child: Tooltip(
+                  message: translate('Settings'),
+                  child: Obx(() => Padding(
+                    padding: EdgeInsets.all(4),
+                    child: Icon(
+                      Icons.more_vert_outlined,
+                      size: 16,
+                      color: menuHover.value ? PCNETColors.greenPrimary : PCNETColors.textSecondary,
+                    ),
+                  )),
+                ),
+                onHover: (value) => menuHover.value = value,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
-  Widget buildLeftPane(BuildContext context) {
-    final isIncomingOnly = bind.isIncomingOnly();
-    final isOutgoingOnly = bind.isOutgoingOnly();
-    final children = <Widget>[
-      if (!isOutgoingOnly) buildPresetPasswordWarning(),
-      if (bind.isCustomClient())
-        Align(
-          alignment: Alignment.center,
-          child: loadPowered(context),
-        ),
-      Align(
-        alignment: Alignment.center,
-        child: loadLogo(),
-      ),
-      buildTip(context),
-      if (!isOutgoingOnly) buildIDBoard(context),
-      if (!isOutgoingOnly) buildPasswordBoard(context),
-      FutureBuilder<Widget>(
-        future: Future.value(
-            Obx(() => buildHelpCards(stateGlobal.updateUrl.value))),
-        builder: (_, data) {
-          if (data.hasData) {
-            if (isIncomingOnly) {
-              if (isInHomePage()) {
-                Future.delayed(Duration(milliseconds: 300), () {
-                  _updateWindowSize();
-                });
-              }
-            }
-            return data.data!;
-          } else {
-            return const Offstage();
-          }
-        },
-      ),
-      buildPluginEntry(),
-    ];
-    if (isIncomingOnly) {
-      children.addAll([
-        Divider(),
-        OnlineStatusWidget(
-          onSvcStatusChanged: () {
+  /// Compact Password card
+  Widget _buildPasswordCard(BuildContext context) {
+    return Consumer<ServerModel>(
+      builder: (context, model, child) {
+        RxBool refreshHover = false.obs;
+        RxBool editHover = false.obs;
+        final showOneTime = model.approveMode != 'click' &&
+            model.verificationMethod != kUsePermanentPassword;
+        return Container(
+          padding: EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: PCNETColors.grayDark,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: PCNETColors.borderColor, width: 1),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.key_outlined, size: 14, color: PCNETColors.greenPrimary),
+                  SizedBox(width: 6),
+                  Text(
+                    translate("One-time Password"),
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: PCNETColors.textSecondary,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 6),
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onDoubleTap: () {
+                        if (showOneTime) {
+                          Clipboard.setData(
+                              ClipboardData(text: model.serverPasswd.text));
+                          showToast(translate("Copied"));
+                        }
+                      },
+                      child: TextFormField(
+                        controller: model.serverPasswd,
+                        readOnly: true,
+                        decoration: InputDecoration(
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.zero,
+                          isDense: true,
+                        ),
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: PCNETColors.textPrimary,
+                          letterSpacing: 2,
+                        ),
+                      ).workaroundFreezeLinuxMint(),
+                    ),
+                  ),
+                  if (showOneTime)
+                    AnimatedRotationWidget(
+                      onPressed: () => bind.mainUpdateTemporaryPassword(),
+                      child: Tooltip(
+                        message: translate('Refresh Password'),
+                        child: Obx(() => Icon(
+                              Icons.refresh,
+                              color: refreshHover.value
+                                  ? PCNETColors.greenPrimary
+                                  : PCNETColors.textSecondary,
+                              size: 16,
+                            )),
+                      ),
+                      onHover: (value) => refreshHover.value = value,
+                    ).marginOnly(right: 4),
+                  if (!bind.isDisableSettings())
+                    InkWell(
+                      borderRadius: BorderRadius.circular(4),
+                      child: Tooltip(
+                        message: translate('Change Password'),
+                        child: Obx(
+                          () => Padding(
+                            padding: EdgeInsets.all(4),
+                            child: Icon(
+                              Icons.edit_outlined,
+                              color: editHover.value
+                                  ? PCNETColors.greenPrimary
+                                  : PCNETColors.textSecondary,
+                              size: 16,
+                            ),
+                          ),
+                        ),
+                      ),
+                      onTap: () => DesktopSettingPage.switch2page(
+                          SettingsTabKey.safety),
+                      onHover: (value) => editHover.value = value,
+                    ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// Help/install banners shown as horizontal cards
+  Widget _buildHelpBanners(BuildContext context) {
+    return FutureBuilder<Widget>(
+      future: Future.value(
+          Obx(() => _buildHelpContent(stateGlobal.updateUrl.value))),
+      builder: (_, data) {
+        if (data.hasData) {
+          if (bind.isIncomingOnly()) {
             if (isInHomePage()) {
               Future.delayed(Duration(milliseconds: 300), () {
                 _updateWindowSize();
               });
             }
-          },
-        ).marginOnly(bottom: 6, right: 6)
-      ]);
-    }
-    final textColor = Theme.of(context).textTheme.titleLarge?.color;
-    return ChangeNotifierProvider.value(
-      value: gFFI.serverModel,
-      child: Container(
-        width: isIncomingOnly ? 280.0 : 200.0,
-        color: Theme.of(context).colorScheme.background,
-        child: Stack(
-          children: [
-            Column(
-              children: [
-                SingleChildScrollView(
-                  controller: _leftPaneScrollController,
-                  child: Column(
-                    key: _childKey,
-                    children: children,
-                  ),
-                ),
-                Expanded(child: Container())
-              ],
-            ),
-            if (isOutgoingOnly)
-              Positioned(
-                bottom: 6,
-                left: 12,
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: InkWell(
-                    child: Obx(
-                      () => Icon(
-                        Icons.settings,
-                        color: _editHover.value
-                            ? textColor
-                            : Colors.grey.withOpacity(0.5),
-                        size: 22,
-                      ),
-                    ),
-                    onTap: () => {
-                      if (DesktopSettingPage.tabKeys.isNotEmpty)
-                        {
-                          DesktopSettingPage.switch2page(
-                              DesktopSettingPage.tabKeys[0])
-                        }
-                    },
-                    onHover: (value) => _editHover.value = value,
-                  ),
-                ),
-              )
-          ],
-        ),
-      ),
+          }
+          return data.data!;
+        } else {
+          return const Offstage();
+        }
+      },
     );
   }
 
-  buildRightPane(BuildContext context) {
+  /// Status bar at bottom
+  Widget _buildStatusBar(BuildContext context) {
     return Container(
-      color: Theme.of(context).scaffoldBackgroundColor,
-      child: ConnectionPage(),
+      height: 32,
+      padding: EdgeInsets.symmetric(horizontal: 16),
+      color: PCNETColors.surfaceColor,
+      child: OnlineStatusWidget(),
     );
   }
 
-  buildIDBoard(BuildContext context) {
-    final model = gFFI.serverModel;
-    return Container(
-      margin: const EdgeInsets.only(left: 20, right: 20),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.baseline,
-        textBaseline: TextBaseline.alphabetic,
-        children: [
-          Container(
-            width: 3,
-            height: 48,
-            decoration: BoxDecoration(
-              color: PCNETColors.greenPrimary,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(left: 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "ID",
-                    style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                        color: PCNETColors.textSecondary),
-                  ),
-                  GestureDetector(
-                    onDoubleTap: () {
-                      Clipboard.setData(
-                          ClipboardData(text: model.serverId.text));
-                      showToast(translate("Copied"));
-                    },
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: TextFormField(
-                            controller: model.serverId,
-                            readOnly: true,
-                            decoration: InputDecoration(
-                              border: InputBorder.none,
-                              contentPadding: EdgeInsets.only(top: 4, bottom: 4),
-                              isDense: true,
-                            ),
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w600,
-                              color: PCNETColors.textPrimary,
-                            ),
-                          ).workaroundFreezeLinuxMint(),
-                        ),
-                        buildPopupMenu(context),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  // ============ Help cards / Install cards ============
 
-  Widget buildPopupMenu(BuildContext context) {
-    RxBool hover = false.obs;
-    return InkWell(
-      borderRadius: BorderRadius.circular(4),
-      onTap: DesktopTabPage.onAddSetting,
-      child: Tooltip(
-        message: translate('Settings'),
-        child: Obx(
-          () => Padding(
-            padding: EdgeInsets.all(4),
-            child: Icon(
-              Icons.more_vert_outlined,
-              size: 18,
-              color: hover.value ? PCNETColors.textPrimary : PCNETColors.textSecondary,
-            ),
-          ),
-        ),
-      ),
-      onHover: (value) => hover.value = value,
-    );
-  }
-
-  buildPasswordBoard(BuildContext context) {
-    return ChangeNotifierProvider.value(
-        value: gFFI.serverModel,
-        child: Consumer<ServerModel>(
-          builder: (context, model, child) {
-            return buildPasswordBoard2(context, model);
-          },
-        ));
-  }
-
-  buildPasswordBoard2(BuildContext context, ServerModel model) {
-    RxBool refreshHover = false.obs;
-    RxBool editHover = false.obs;
-    final showOneTime = model.approveMode != 'click' &&
-        model.verificationMethod != kUsePermanentPassword;
-    return Container(
-      margin: EdgeInsets.only(left: 20, right: 20, top: 8, bottom: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.baseline,
-        textBaseline: TextBaseline.alphabetic,
-        children: [
-          Container(
-            width: 3,
-            height: 48,
-            decoration: BoxDecoration(
-              color: PCNETColors.greenDark,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(left: 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    translate("One-time Password"),
-                    style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                        color: PCNETColors.textSecondary),
-                  ),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: GestureDetector(
-                          onDoubleTap: () {
-                            if (showOneTime) {
-                              Clipboard.setData(
-                                  ClipboardData(text: model.serverPasswd.text));
-                              showToast(translate("Copied"));
-                            }
-                          },
-                          child: TextFormField(
-                            controller: model.serverPasswd,
-                            readOnly: true,
-                            decoration: InputDecoration(
-                              border: InputBorder.none,
-                              contentPadding:
-                                  EdgeInsets.only(top: 4, bottom: 4),
-                              isDense: true,
-                            ),
-                            style: TextStyle(
-                              fontSize: 15,
-                              color: PCNETColors.textPrimary,
-                            ),
-                          ).workaroundFreezeLinuxMint(),
-                        ),
-                      ),
-                      if (showOneTime)
-                        AnimatedRotationWidget(
-                          onPressed: () => bind.mainUpdateTemporaryPassword(),
-                          child: Tooltip(
-                            message: translate('Refresh Password'),
-                            child: Obx(() => Icon(
-                                  Icons.refresh,
-                                  color: refreshHover.value
-                                      ? PCNETColors.textPrimary
-                                      : PCNETColors.textSecondary,
-                                  size: 18,
-                                )),
-                          ),
-                          onHover: (value) => refreshHover.value = value,
-                        ).marginOnly(right: 4),
-                      if (!bind.isDisableSettings())
-                        InkWell(
-                          borderRadius: BorderRadius.circular(4),
-                          child: Tooltip(
-                            message: translate('Change Password'),
-                            child: Obx(
-                              () => Padding(
-                                padding: EdgeInsets.all(4),
-                                child: Icon(
-                                  Icons.edit_outlined,
-                                  color: editHover.value
-                                      ? PCNETColors.textPrimary
-                                      : PCNETColors.textSecondary,
-                                  size: 18,
-                                ),
-                              ),
-                            ),
-                          ),
-                          onTap: () => DesktopSettingPage.switch2page(
-                              SettingsTabKey.safety),
-                          onHover: (value) => editHover.value = value,
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  buildTip(BuildContext context) {
-    final isOutgoingOnly = bind.isOutgoingOnly();
-    return Padding(
-      padding:
-          const EdgeInsets.only(left: 20.0, right: 16, top: 16.0, bottom: 5),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Column(
-            children: [
-              if (!isOutgoingOnly)
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    translate("Your Desktop"),
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                ),
-            ],
-          ),
-          SizedBox(
-            height: 10.0,
-          ),
-          if (!isOutgoingOnly)
-            Text(
-              translate("desk_tip"),
-              overflow: TextOverflow.clip,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          if (isOutgoingOnly)
-            Text(
-              translate("outgoing_only_desk_tip"),
-              overflow: TextOverflow.clip,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget buildHelpCards(String updateUrl) {
+  Widget _buildHelpContent(String updateUrl) {
     if (!bind.isCustomClient() &&
         updateUrl.isNotEmpty &&
         !isCardClosed &&
@@ -650,7 +435,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
           handleUpdate(updateUrl);
         };
       }
-      return buildInstallCard(
+      return _buildBannerCard(
           "Status",
           "${translate("new-version-of-{${bind.mainGetAppNameSync()}}-tip")} (${bind.mainGetNewVersion()}).",
           btnText,
@@ -658,19 +443,19 @@ class _DesktopHomePageState extends State<DesktopHomePage>
           closeButton: true);
     }
     if (systemError.isNotEmpty) {
-      return buildInstallCard("", systemError, "", () {});
+      return _buildBannerCard("", systemError, "", () {});
     }
 
     if (isWindows && !bind.isDisableInstallation()) {
       if (!bind.mainIsInstalled()) {
-        return buildInstallCard(
+        return _buildBannerCard(
             "", bind.isOutgoingOnly() ? "" : "install_tip", "Install",
             () async {
           await rustDeskWinManager.closeAllSubWindows();
           bind.mainGotoInstall();
         });
       } else if (bind.mainIsInstalledLowerVersion()) {
-        return buildInstallCard(
+        return _buildBannerCard(
             "Status", "Your installation is lower version.", "Click to upgrade",
             () async {
           await rustDeskWinManager.closeAllSubWindows();
@@ -680,19 +465,19 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     } else if (isMacOS) {
       final isOutgoingOnly = bind.isOutgoingOnly();
       if (!(isOutgoingOnly || bind.mainIsCanScreenRecording(prompt: false))) {
-        return buildInstallCard("Permissions", "config_screen", "Configure",
+        return _buildBannerCard("Permissions", "config_screen", "Configure",
             () async {
           bind.mainIsCanScreenRecording(prompt: true);
           watchIsCanScreenRecording = true;
         }, help: 'Help', link: translate("doc_mac_permission"));
       } else if (!isOutgoingOnly && !bind.mainIsProcessTrusted(prompt: false)) {
-        return buildInstallCard("Permissions", "config_acc", "Configure",
+        return _buildBannerCard("Permissions", "config_acc", "Configure",
             () async {
           bind.mainIsProcessTrusted(prompt: true);
           watchIsProcessTrust = true;
         }, help: 'Help', link: translate("doc_mac_permission"));
       } else if (!bind.mainIsCanInputMonitoring(prompt: false)) {
-        return buildInstallCard("Permissions", "config_input", "Configure",
+        return _buildBannerCard("Permissions", "config_input", "Configure",
             () async {
           bind.mainIsCanInputMonitoring(prompt: true);
           watchIsInputMonitoring = true;
@@ -701,7 +486,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
           !svcStopped.value &&
           bind.mainIsInstalled() &&
           !bind.mainIsInstalledDaemon(prompt: false)) {
-        return buildInstallCard("", "install_daemon_tip", "Install", () async {
+        return _buildBannerCard("", "install_daemon_tip", "Install", () async {
           bind.mainIsInstalledDaemon(prompt: true);
         });
       }
@@ -713,12 +498,11 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       if (bind.isSelinuxEnforcing()) {
         final keyShowSelinuxHelpTip = "show-selinux-help-tip";
         if (bind.mainGetLocalOption(key: keyShowSelinuxHelpTip) != 'N') {
-          LinuxCards.add(buildInstallCard(
+          LinuxCards.add(_buildBannerCard(
             "Warning",
             "selinux_tip",
             "",
             () async {},
-            marginTop: LinuxCards.isEmpty ? 20.0 : 5.0,
             help: 'Help',
             link:
                 'https://rustdesk.com/docs/en/client/linux/#permissions-issue',
@@ -728,22 +512,18 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         }
       }
       if (bind.mainCurrentIsWayland()) {
-        LinuxCards.add(buildInstallCard(
+        LinuxCards.add(_buildBannerCard(
             "Warning", "wayland_experiment_tip", "", () async {},
-            marginTop: LinuxCards.isEmpty ? 20.0 : 5.0,
             help: 'Help',
             link: 'https://rustdesk.com/docs/en/client/linux/#x11-required'));
       } else if (bind.mainIsLoginWayland()) {
-        LinuxCards.add(buildInstallCard("Warning",
+        LinuxCards.add(_buildBannerCard("Warning",
             "Login screen using Wayland is not supported", "", () async {},
-            marginTop: LinuxCards.isEmpty ? 20.0 : 5.0,
             help: 'Help',
             link: 'https://rustdesk.com/docs/en/client/linux/#login-screen'));
       }
       if (LinuxCards.isNotEmpty) {
-        return Column(
-          children: LinuxCards,
-        );
+        return Column(children: LinuxCards);
       }
     }
     if (bind.isIncomingOnly()) {
@@ -763,10 +543,10 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     return Container();
   }
 
-  Widget buildInstallCard(String title, String content, String btnText,
+  /// Banner-style install/help card (horizontal, full-width)
+  Widget _buildBannerCard(String title, String content, String btnText,
       GestureTapCallback onPressed,
-      {double marginTop = 20.0,
-      String? help,
+      {String? help,
       String? link,
       bool? closeButton,
       String? closeOption}) {
@@ -789,94 +569,110 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       }
     }
 
-    return Stack(
-      children: [
-        Container(
-          margin: EdgeInsets.fromLTRB(
-              12, marginTop, 12, bind.isIncomingOnly() ? marginTop : 0),
-          child: Container(
-              decoration: BoxDecoration(
-                  color: PCNETColors.greenDark,
-                  borderRadius: BorderRadius.circular(8)),
-              padding: EdgeInsets.all(16),
-              child: Column(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: (title.isNotEmpty
-                          ? <Widget>[
-                              Center(
-                                  child: Text(
-                                translate(title),
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14),
-                              ).marginOnly(bottom: 6)),
-                            ]
-                          : <Widget>[]) +
-                      <Widget>[
-                        if (content.isNotEmpty)
-                          Text(
-                            translate(content),
-                            style: TextStyle(
-                                height: 1.5,
-                                color: Colors.white,
-                                fontWeight: FontWeight.normal,
-                                fontSize: 12),
-                          ).marginOnly(bottom: 16)
-                      ] +
-                      (btnText.isNotEmpty
-                          ? <Widget>[
-                              Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    FixedWidthButton(
-                                      width: 150,
-                                      padding: 8,
-                                      isOutline: true,
-                                      text: translate(btnText),
-                                      textColor: Colors.white,
-                                      borderColor: Colors.white,
-                                      textSize: 16,
-                                      radius: 8,
-                                      onTap: onPressed,
-                                    )
-                                  ])
-                            ]
-                          : <Widget>[]) +
-                      (help != null
-                          ? <Widget>[
-                              Center(
-                                  child: InkWell(
-                                      onTap: () async =>
-                                          await launchUrl(Uri.parse(link!)),
-                                      child: Text(
-                                        translate(help),
-                                        style: TextStyle(
-                                            decoration:
-                                                TextDecoration.underline,
-                                            color: Colors.white,
-                                            fontSize: 12),
-                                      )).marginOnly(top: 6)),
-                            ]
-                          : <Widget>[]))),
-        ),
-        if (closeButton != null && closeButton == true)
-          Positioned(
-            top: 18,
-            right: 10,
-            child: IconButton(
-              icon: Icon(
-                Icons.close,
-                color: Colors.white,
-                size: 18,
-              ),
-              onPressed: closeCard,
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: PCNETColors.greenDark.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: PCNETColors.greenDark.withOpacity(0.3), width: 1),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.info_outline, size: 18, color: PCNETColors.greenPrimary),
+          SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (title.isNotEmpty)
+                  Text(
+                    translate(title),
+                    style: TextStyle(
+                      color: PCNETColors.greenPrimary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ).marginOnly(bottom: 2),
+                if (content.isNotEmpty)
+                  Text(
+                    translate(content),
+                    style: TextStyle(
+                      color: PCNETColors.textPrimary,
+                      fontSize: 12,
+                      height: 1.4,
+                    ),
+                  ),
+              ],
             ),
           ),
-      ],
+          if (btnText.isNotEmpty)
+            Padding(
+              padding: EdgeInsets.only(left: 12),
+              child: ElevatedButton(
+                onPressed: onPressed,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: PCNETColors.greenPrimary,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
+                child: Text(translate(btnText), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+              ),
+            ),
+          if (help != null)
+            Padding(
+              padding: EdgeInsets.only(left: 8),
+              child: InkWell(
+                onTap: () async => await launchUrl(Uri.parse(link!)),
+                child: Text(
+                  translate(help),
+                  style: TextStyle(
+                    decoration: TextDecoration.underline,
+                    color: PCNETColors.greenPrimary,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ),
+          if (closeButton != null && closeButton == true)
+            Padding(
+              padding: EdgeInsets.only(left: 8),
+              child: InkWell(
+                onTap: closeCard,
+                child: Icon(Icons.close, color: PCNETColors.textSecondary, size: 16),
+              ),
+            ),
+        ],
+      ),
     );
   }
+
+  // ============ Legacy methods for compatibility ============
+
+  buildPresetPasswordWarning() {
+    return Container();
+  }
+
+  buildPluginEntry() {
+    final entries = PluginUiManager.instance.entries.entries;
+    return Offstage(
+      offstage: entries.isEmpty,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ...entries.map((entry) {
+            return entry.value;
+          })
+        ],
+      ),
+    );
+  }
+
+  // ============ Lifecycle ============
 
   @override
   void initState() {
@@ -1069,21 +865,6 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     if (state == AppLifecycleState.resumed) {
       shouldBeBlocked(_block, canBeBlocked);
     }
-  }
-
-  Widget buildPluginEntry() {
-    final entries = PluginUiManager.instance.entries.entries;
-    return Offstage(
-      offstage: entries.isEmpty,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ...entries.map((entry) {
-            return entry.value;
-          })
-        ],
-      ),
-    );
   }
 }
 
