@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_hbb/common.dart';
 import 'package:flutter_hbb/common/widgets/animated_rotation_widget.dart';
 import 'package:flutter_hbb/common/widgets/custom_password.dart';
+import 'package:flutter_hbb/common/widgets/peer_tab_page.dart';
 import 'package:flutter_hbb/consts.dart';
 import 'package:flutter_hbb/desktop/pages/connection_page.dart';
 import 'package:flutter_hbb/desktop/pages/desktop_setting_page.dart';
@@ -50,11 +51,15 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   Timer? _updateTimer;
   bool isCardClosed = false;
 
-  final RxBool _settingsHover = false.obs;
   final RxBool _block = false.obs;
+  int _selectedNavIndex = 0;
 
   final GlobalKey _childKey = GlobalKey();
   final _leftPaneScrollController = ScrollController();
+
+  // Sidebar colors
+  static const Color _sidebarBg = Color(0xFF16161A);
+  static const Color _leftPanelBg = Color(0xFF1E1E24);
 
   @override
   Widget build(BuildContext context) {
@@ -64,27 +69,45 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     return _buildBlock(
         child: Container(
       color: PCNETColors.blackPrimary,
-      child: Column(
+      child: Row(
         children: [
-          // Top header bar
-          _buildHeaderBar(context),
-          // Device info section (horizontal cards)
-          if (!isOutgoingOnly)
-            ChangeNotifierProvider.value(
-              value: gFFI.serverModel,
-              child: _buildDeviceSection(context),
+          // Sidebar navigation
+          _buildSidebar(context),
+          Container(width: 1, color: PCNETColors.dividerColor),
+          // Main content area
+          Expanded(
+            child: Column(
+              children: [
+                // Main two-panel content
+                Expanded(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Left panel: Connection details + form
+                      if (!isOutgoingOnly)
+                        ChangeNotifierProvider.value(
+                          value: gFFI.serverModel,
+                          child: _buildLeftPanel(context),
+                        ),
+                      if (!isOutgoingOnly)
+                        Container(width: 1, color: PCNETColors.dividerColor),
+                      // Right panel: Recent Sessions + Peer tabs
+                      Expanded(child: _buildRightPanel(context)),
+                    ],
+                  ),
+                ),
+                // Help/install banners
+                if (!isOutgoingOnly)
+                  ChangeNotifierProvider.value(
+                    value: gFFI.serverModel,
+                    child: _buildHelpBanners(context),
+                  ),
+                // Status bar
+                Container(height: 1, color: PCNETColors.dividerColor),
+                _buildStatusBar(context),
+              ],
             ),
-          // Help/install banners
-          if (!isOutgoingOnly)
-            ChangeNotifierProvider.value(
-              value: gFFI.serverModel,
-              child: _buildHelpBanners(context),
-            ),
-          // Connection page (input + peers) - takes all remaining space
-          Expanded(child: ConnectionPage()),
-          // Status bar at bottom
-          Container(height: 1, color: PCNETColors.dividerColor),
-          _buildStatusBar(context),
+          ),
         ],
       ),
     ));
@@ -95,122 +118,219 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         block: _block, mask: true, use: canBeBlocked, child: child);
   }
 
-  /// Compact header bar with logo, name, and settings
-  Widget _buildHeaderBar(BuildContext context) {
+  // ============ SIDEBAR ============
+
+  Widget _buildSidebar(BuildContext context) {
     return Container(
-      height: 48,
-      padding: EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: PCNETColors.surfaceColor,
-        border: Border(
-          bottom: BorderSide(color: PCNETColors.dividerColor, width: 1),
-        ),
-      ),
-      child: Row(
+      width: 72,
+      color: _sidebarBg,
+      child: Column(
         children: [
+          SizedBox(height: 16),
           // Logo
           Container(
-            width: 28,
-            height: 28,
-            child: loadIcon(28),
-          ),
-          SizedBox(width: 10),
-          // App Name
-          Text(
-            'PCNET-IT Connect',
-            style: TextStyle(
-              color: PCNETColors.greenPrimary,
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.3,
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
             ),
+            child: loadIcon(38),
           ),
+          SizedBox(height: 24),
+          // Top nav items
+          _buildNavItem(Icons.connected_tv_outlined, 'Remote\nConnection', 0),
+          SizedBox(height: 2),
+          _buildNavItem(Icons.history_outlined, 'History', 1),
           Spacer(),
-          // Settings button
-          _buildSettingsButton(context),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSettingsButton(BuildContext context) {
-    final textColor = Theme.of(context).textTheme.titleLarge?.color;
-    return InkWell(
-      borderRadius: BorderRadius.circular(6),
-      child: Obx(
-        () => Padding(
-          padding: EdgeInsets.all(6),
-          child: Icon(
-            Icons.settings_outlined,
-            color: _settingsHover.value ? textColor : PCNETColors.textSecondary,
-            size: 20,
+          // Bottom nav items
+          _buildNavItem(Icons.settings_outlined, 'Settings', 2),
+          SizedBox(height: 2),
+          _buildNavItem(Icons.info_outline, 'About', 3),
+          SizedBox(height: 16),
+          // User icon
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: PCNETColors.grayDark,
+              border: Border.all(color: PCNETColors.borderColor, width: 1),
+            ),
+            child: Icon(Icons.person_outline, size: 18, color: PCNETColors.textSecondary),
           ),
-        ),
-      ),
-      onTap: () => {
-        if (DesktopSettingPage.tabKeys.isNotEmpty)
-          {
-            DesktopSettingPage.switch2page(DesktopSettingPage.tabKeys[0])
-          }
-      },
-      onHover: (value) => _settingsHover.value = value,
-    );
-  }
-
-  /// Horizontal device info section with two cards side by side
-  Widget _buildDeviceSection(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.fromLTRB(16, 12, 16, 12),
-      decoration: BoxDecoration(
-        color: PCNETColors.surfaceColor,
-        border: Border(
-          bottom: BorderSide(color: PCNETColors.dividerColor, width: 1),
-        ),
-      ),
-      child: Row(
-        children: [
-          // ID Card
-          Expanded(child: _buildIDCard(context)),
-          SizedBox(width: 12),
-          // Password Card
-          Expanded(child: _buildPasswordCard(context)),
+          SizedBox(height: 16),
         ],
       ),
     );
   }
 
-  /// Compact ID card
-  Widget _buildIDCard(BuildContext context) {
-    final model = gFFI.serverModel;
-    RxBool copyHover = false.obs;
-    RxBool menuHover = false.obs;
-    return Container(
-      padding: EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: PCNETColors.grayDark,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: PCNETColors.borderColor, width: 1),
+  Widget _buildNavItem(IconData icon, String label, int index) {
+    final isSelected = _selectedNavIndex == index;
+    return InkWell(
+      onTap: () {
+        if (index == 2) {
+          // Settings - open settings tab
+          if (DesktopSettingPage.tabKeys.isNotEmpty) {
+            DesktopSettingPage.switch2page(DesktopSettingPage.tabKeys[0]);
+          }
+          return;
+        }
+        if (index == 3) {
+          // About - show about dialog
+          _showAboutDialog(context);
+          return;
+        }
+        setState(() {
+          _selectedNavIndex = index;
+        });
+      },
+      child: Container(
+        width: 72,
+        padding: EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          border: isSelected
+              ? Border(
+                  left: BorderSide(color: PCNETColors.greenPrimary, width: 3),
+                )
+              : null,
+          color: isSelected ? PCNETColors.greenPrimary.withOpacity(0.08) : null,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 22,
+              color: isSelected ? PCNETColors.greenPrimary : PCNETColors.textSecondary,
+            ),
+            SizedBox(height: 4),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 9,
+                height: 1.3,
+                color: isSelected ? PCNETColors.greenPrimary : PCNETColors.textSecondary,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
       ),
+    );
+  }
+
+  void _showAboutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: PCNETColors.surfaceColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: Row(
+          children: [
+            loadIcon(28),
+            SizedBox(width: 10),
+            Text(
+              'PCNET-IT Connect',
+              style: TextStyle(
+                color: PCNETColors.greenPrimary,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Version ${bind.mainGetVersion()}',
+              style: TextStyle(color: PCNETColors.textSecondary, fontSize: 13),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Remote desktop solution by PCNET-IT Solutions.',
+              style: TextStyle(color: PCNETColors.textPrimary, fontSize: 13),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('OK', style: TextStyle(color: PCNETColors.greenPrimary)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============ LEFT PANEL ============
+
+  Widget _buildLeftPanel(BuildContext context) {
+    return Container(
+      width: 380,
+      color: _leftPanelBg,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(Icons.computer_outlined, size: 14, color: PCNETColors.greenPrimary),
-              SizedBox(width: 6),
-              Text(
-                "ID",
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: PCNETColors.textSecondary,
-                  letterSpacing: 0.5,
+          // Connection Details section
+          Padding(
+            padding: EdgeInsets.fromLTRB(24, 24, 24, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Your Connection Details',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: PCNETColors.textPrimary,
+                  ),
                 ),
-              ),
-            ],
+                SizedBox(height: 20),
+                // Your ID
+                _buildIDDisplay(context),
+                SizedBox(height: 16),
+                // Password
+                _buildPasswordDisplay(context),
+              ],
+            ),
           ),
-          SizedBox(height: 6),
-          Row(
+          // Connect to Remote Device section
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(24, 0, 24, 24),
+              child: ConnectionPage(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIDDisplay(BuildContext context) {
+    final model = gFFI.serverModel;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Your ID',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            color: PCNETColors.textSecondary,
+          ),
+        ),
+        SizedBox(height: 6),
+        Container(
+          padding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: PCNETColors.grayDark,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: PCNETColors.borderColor, width: 1),
+          ),
+          child: Row(
             children: [
               Expanded(
                 child: GestureDetector(
@@ -236,82 +356,53 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                   ).workaroundFreezeLinuxMint(),
                 ),
               ),
-              InkWell(
-                borderRadius: BorderRadius.circular(4),
+              _buildIconButton(
+                Icons.refresh,
+                tooltip: translate('Refresh ID'),
+                onTap: () => bind.mainUpdateTemporaryPassword(),
+              ),
+              SizedBox(width: 4),
+              _buildIconButton(
+                Icons.copy_outlined,
+                tooltip: translate('Copy'),
                 onTap: () {
                   Clipboard.setData(
                       ClipboardData(text: model.serverId.text));
                   showToast(translate("Copied"));
                 },
-                child: Obx(() => Padding(
-                  padding: EdgeInsets.all(4),
-                  child: Icon(
-                    Icons.copy_outlined,
-                    size: 16,
-                    color: copyHover.value ? PCNETColors.greenPrimary : PCNETColors.textSecondary,
-                  ),
-                )),
-                onHover: (value) => copyHover.value = value,
-              ),
-              SizedBox(width: 2),
-              InkWell(
-                borderRadius: BorderRadius.circular(4),
-                onTap: DesktopTabPage.onAddSetting,
-                child: Tooltip(
-                  message: translate('Settings'),
-                  child: Obx(() => Padding(
-                    padding: EdgeInsets.all(4),
-                    child: Icon(
-                      Icons.more_vert_outlined,
-                      size: 16,
-                      color: menuHover.value ? PCNETColors.greenPrimary : PCNETColors.textSecondary,
-                    ),
-                  )),
-                ),
-                onHover: (value) => menuHover.value = value,
               ),
             ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  /// Compact Password card
-  Widget _buildPasswordCard(BuildContext context) {
+  Widget _buildPasswordDisplay(BuildContext context) {
     return Consumer<ServerModel>(
       builder: (context, model, child) {
-        RxBool refreshHover = false.obs;
-        RxBool editHover = false.obs;
         final showOneTime = model.approveMode != 'click' &&
             model.verificationMethod != kUsePermanentPassword;
-        return Container(
-          padding: EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: PCNETColors.grayDark,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: PCNETColors.borderColor, width: 1),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.key_outlined, size: 14, color: PCNETColors.greenPrimary),
-                  SizedBox(width: 6),
-                  Text(
-                    translate("One-time Password"),
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: PCNETColors.textSecondary,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ],
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Password',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: PCNETColors.textSecondary,
               ),
-              SizedBox(height: 6),
-              Row(
+            ),
+            SizedBox(height: 6),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: PCNETColors.grayDark,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: PCNETColors.borderColor, width: 1),
+              ),
+              child: Row(
                 children: [
                   Expanded(
                     child: GestureDetector(
@@ -340,52 +431,120 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                     ),
                   ),
                   if (showOneTime)
-                    AnimatedRotationWidget(
-                      onPressed: () => bind.mainUpdateTemporaryPassword(),
-                      child: Tooltip(
-                        message: translate('Refresh Password'),
-                        child: Obx(() => Icon(
-                              Icons.refresh,
-                              color: refreshHover.value
-                                  ? PCNETColors.greenPrimary
-                                  : PCNETColors.textSecondary,
-                              size: 16,
-                            )),
-                      ),
-                      onHover: (value) => refreshHover.value = value,
-                    ).marginOnly(right: 4),
-                  if (!bind.isDisableSettings())
-                    InkWell(
-                      borderRadius: BorderRadius.circular(4),
-                      child: Tooltip(
-                        message: translate('Change Password'),
-                        child: Obx(
-                          () => Padding(
-                            padding: EdgeInsets.all(4),
-                            child: Icon(
-                              Icons.edit_outlined,
-                              color: editHover.value
-                                  ? PCNETColors.greenPrimary
-                                  : PCNETColors.textSecondary,
-                              size: 16,
-                            ),
-                          ),
-                        ),
-                      ),
-                      onTap: () => DesktopSettingPage.switch2page(
-                          SettingsTabKey.safety),
-                      onHover: (value) => editHover.value = value,
+                    _buildIconButton(
+                      Icons.copy_outlined,
+                      tooltip: translate('Copy'),
+                      onTap: () {
+                        Clipboard.setData(
+                            ClipboardData(text: model.serverPasswd.text));
+                        showToast(translate("Copied"));
+                      },
                     ),
                 ],
               ),
-            ],
-          ),
+            ),
+          ],
         );
       },
     );
   }
 
-  /// Help/install banners shown as horizontal cards
+  Widget _buildIconButton(IconData icon,
+      {required String tooltip, required VoidCallback onTap}) {
+    RxBool hover = false.obs;
+    return InkWell(
+      borderRadius: BorderRadius.circular(4),
+      onTap: onTap,
+      onHover: (value) => hover.value = value,
+      child: Tooltip(
+        message: tooltip,
+        child: Obx(() => Padding(
+              padding: EdgeInsets.all(4),
+              child: Icon(
+                icon,
+                size: 16,
+                color: hover.value
+                    ? PCNETColors.greenPrimary
+                    : PCNETColors.textSecondary,
+              ),
+            )),
+      ),
+    );
+  }
+
+  // ============ RIGHT PANEL ============
+
+  Widget _buildRightPanel(BuildContext context) {
+    return Container(
+      color: PCNETColors.blackPrimary,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Padding(
+            padding: EdgeInsets.fromLTRB(20, 20, 20, 0),
+            child: Row(
+              children: [
+                Text(
+                  'Recent Sessions',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: PCNETColors.textPrimary,
+                  ),
+                ),
+                Spacer(),
+                _buildSettingsButton(context),
+              ],
+            ),
+          ),
+          SizedBox(height: 8),
+          // Peer tabs and list
+          Expanded(
+            child: PeerTabPage().paddingOnly(left: 12.0, right: 12.0),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSettingsButton(BuildContext context) {
+    RxBool hover = false.obs;
+    return InkWell(
+      borderRadius: BorderRadius.circular(6),
+      child: Obx(
+        () => Padding(
+          padding: EdgeInsets.all(6),
+          child: Icon(
+            Icons.settings_outlined,
+            color: hover.value ? PCNETColors.textPrimary : PCNETColors.textSecondary,
+            size: 20,
+          ),
+        ),
+      ),
+      onTap: () => {
+        if (DesktopSettingPage.tabKeys.isNotEmpty)
+          {
+            DesktopSettingPage.switch2page(DesktopSettingPage.tabKeys[0])
+          }
+      },
+      onHover: (value) => hover.value = value,
+    );
+  }
+
+  // ============ STATUS BAR ============
+
+  Widget _buildStatusBar(BuildContext context) {
+    return Container(
+      height: 32,
+      padding: EdgeInsets.symmetric(horizontal: 16),
+      color: PCNETColors.surfaceColor,
+      child: OnlineStatusWidget(),
+    );
+  }
+
+  // ============ HELP BANNERS ============
+
   Widget _buildHelpBanners(BuildContext context) {
     return FutureBuilder<Widget>(
       future: Future.value(
@@ -406,18 +565,6 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       },
     );
   }
-
-  /// Status bar at bottom
-  Widget _buildStatusBar(BuildContext context) {
-    return Container(
-      height: 32,
-      padding: EdgeInsets.symmetric(horizontal: 16),
-      color: PCNETColors.surfaceColor,
-      child: OnlineStatusWidget(),
-    );
-  }
-
-  // ============ Help cards / Install cards ============
 
   Widget _buildHelpContent(String updateUrl) {
     if (!bind.isCustomClient() &&
@@ -543,7 +690,6 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     return Container();
   }
 
-  /// Banner-style install/help card (horizontal, full-width)
   Widget _buildBannerCard(String title, String content, String btnText,
       GestureTapCallback onPressed,
       {String? help,

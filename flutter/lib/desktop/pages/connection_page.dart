@@ -1,4 +1,4 @@
-// main window right pane - PCNET-IT Connect Customization
+// Connection form and status widget - PCNET-IT Connect
 
 import 'dart:async';
 import 'dart:convert';
@@ -14,7 +14,6 @@ import 'package:flutter_hbb/models/peer_model.dart';
 
 import '../../common.dart';
 import '../../common/formatter/id_formatter.dart';
-import '../../common/widgets/peer_tab_page.dart';
 import '../../common/widgets/autocomplete.dart';
 import '../../models/platform_model.dart';
 import '../../desktop/widgets/material_mod_popup_menu.dart' as mod_menu;
@@ -30,7 +29,7 @@ class OnlineStatusWidget extends StatefulWidget {
   State<OnlineStatusWidget> createState() => _OnlineStatusWidgetState();
 }
 
-/// State for the connection page.
+/// State for the online status widget.
 class _OnlineStatusWidgetState extends State<OnlineStatusWidget> {
   final _svcStopped = Get.find<RxBool>(tag: 'stop-service');
   final _svcIsUsingPublicServer = true.obs;
@@ -73,7 +72,9 @@ class _OnlineStatusWidgetState extends State<OnlineStatusWidget> {
                   },
                   child: Text(translate("Start service"),
                       style: TextStyle(
-                          decoration: TextDecoration.underline, fontSize: em)))
+                          decoration: TextDecoration.underline,
+                          fontSize: em,
+                          color: PCNETColors.greenPrimary)))
               .marginOnly(left: em),
         );
 
@@ -125,7 +126,10 @@ class _OnlineStatusWidgetState extends State<OnlineStatusWidget> {
               : stateGlobal.svcStatus.value == SvcStatus.notReady
                   ? translate("not_ready_status")
                   : translate('Ready'),
-      style: TextStyle(fontSize: em),
+      style: TextStyle(
+        fontSize: em,
+        color: PCNETColors.textPrimary,
+      ),
     );
   }
 
@@ -149,7 +153,8 @@ class _OnlineStatusWidgetState extends State<OnlineStatusWidget> {
   }
 }
 
-/// Connection page for connecting to a remote peer.
+/// Connection form for connecting to a remote peer.
+/// Renders as a vertical form (ID input + Connect button).
 class ConnectionPage extends StatefulWidget {
   const ConnectionPage({Key? key}) : super(key: key);
 
@@ -157,7 +162,7 @@ class ConnectionPage extends StatefulWidget {
   State<ConnectionPage> createState() => _ConnectionPageState();
 }
 
-/// State for the connection page.
+/// State for the connection form.
 class _ConnectionPageState extends State<ConnectionPage>
     with SingleTickerProviderStateMixin, WindowListener {
   /// Controller for the id input bar.
@@ -167,16 +172,12 @@ class _ConnectionPageState extends State<ConnectionPage>
   final FocusNode _idFocusNode = FocusNode();
   final TextEditingController _idEditingController = TextEditingController();
 
-  String selectedConnectionType = 'Connect';
-
   bool isWindowMinimized = false;
 
   final AllPeersLoader _allPeersLoader = AllPeersLoader();
 
   // https://github.com/flutter/flutter/issues/157244
   Iterable<Peer> _autocompleteOpts = [];
-
-  final _menuOpen = false.obs;
 
   @override
   void initState() {
@@ -222,7 +223,6 @@ class _ConnectionPageState extends State<ConnectionPage>
       isWindowMinimized = true;
     } else if (eventName == 'maximize' || eventName == 'restore') {
       if (isWindowMinimized && isWindows) {
-        // windows can't update when minimized.
         Get.forceAppUpdate();
       }
       isWindowMinimized = false;
@@ -231,13 +231,11 @@ class _ConnectionPageState extends State<ConnectionPage>
 
   @override
   void onWindowEnterFullScreen() {
-    // Remove edge border by setting the value to zero.
     stateGlobal.resizeEdgeSize.value = 0;
   }
 
   @override
   void onWindowLeaveFullScreen() {
-    // Restore edge border to default edge size.
     stateGlobal.resizeEdgeSize.value = stateGlobal.isMaximized.isTrue
         ? kMaximizeEdgeSize
         : windowResizeEdgeSize;
@@ -257,7 +255,6 @@ class _ConnectionPageState extends State<ConnectionPage>
       }
 
       final textLength = _idEditingController.value.text.length;
-      // Select all to facilitate removing text, just following the behavior of address input of chrome.
       _idEditingController.selection =
           TextSelection(baseOffset: 0, extentOffset: textLength);
     }
@@ -265,80 +262,61 @@ class _ConnectionPageState extends State<ConnectionPage>
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: PCNETColors.blackPrimary,
-      child: Column(
-        children: [
-          // Connection toolbar - compact horizontal bar
-          Container(
-            padding: EdgeInsets.fromLTRB(16, 10, 16, 10),
-            decoration: BoxDecoration(
-              color: PCNETColors.surfaceColor,
-              border: Border(
-                bottom: BorderSide(color: PCNETColors.dividerColor, width: 1),
-              ),
-            ),
-            child: _buildConnectionToolbar(context),
-          ),
-          // Peers list - takes all remaining space
-          Expanded(child: PeerTabPage().paddingOnly(left: 12.0, right: 12.0)),
-        ],
-      ),
-    );
-  }
-
-  /// Compact connection toolbar - single horizontal row
-  Widget _buildConnectionToolbar(BuildContext context) {
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(Icons.link, size: 16, color: PCNETColors.greenPrimary),
-        SizedBox(width: 8),
+        // Heading
         Text(
-          translate('Control Remote Desktop'),
+          'Connect to Remote Device',
           style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: PCNETColors.textPrimary,
+          ),
+        ),
+        SizedBox(height: 6),
+        Text(
+          'Enter your access to remote device',
+          style: TextStyle(
+            fontSize: 12,
             color: PCNETColors.textSecondary,
           ),
         ),
-        SizedBox(width: 16),
-        // Connection input field - expands to fill space
-        Expanded(child: _buildCompactIDField(context)),
-        SizedBox(width: 10),
-        // Connect button
+        SizedBox(height: 16),
+        // ID input with autocomplete
+        _buildIDField(context),
+        SizedBox(height: 14),
+        // Full-width Connect button
         SizedBox(
-          height: 36,
+          width: double.infinity,
+          height: 44,
           child: ElevatedButton(
             onPressed: () => onConnect(),
             style: ElevatedButton.styleFrom(
               backgroundColor: PCNETColors.greenPrimary,
-              foregroundColor: PCNETColors.blackPrimary,
+              foregroundColor: Colors.white,
               elevation: 0,
-              padding: EdgeInsets.symmetric(horizontal: 20),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
             child: Text(
-              "Conectar",
+              'Connect',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                fontSize: 13,
+                fontSize: 15,
               ),
             ),
           ),
         ),
-        SizedBox(width: 6),
-        // More options dropdown
-        _buildMoreOptionsButton(context),
       ],
     );
   }
 
-  /// Compact ID input field styled as a search bar
-  Widget _buildCompactIDField(BuildContext context) {
+  /// ID input field with autocomplete
+  Widget _buildIDField(BuildContext context) {
     return SizedBox(
-      height: 36,
+      height: 44,
       child: RawAutocomplete<Peer>(
         optionsBuilder: (TextEditingValue textEditingValue) {
           if (textEditingValue.text == '') {
@@ -388,7 +366,7 @@ class _ConnectionPageState extends State<ConnectionPage>
                 focusNode: fieldFocusNode,
                 style: const TextStyle(
                   fontFamily: 'WorkSans',
-                  fontSize: 14,
+                  fontSize: 15,
                   height: 1.2,
                   color: PCNETColors.textPrimary,
                 ),
@@ -400,10 +378,10 @@ class _ConnectionPageState extends State<ConnectionPage>
                   counterText: '',
                   hintText: _idInputFocused.value
                       ? null
-                      : 'Digite o ID de conexão',
+                      : translate('Enter Remote ID'),
                   hintStyle: TextStyle(
                     color: PCNETColors.textSecondary,
-                    fontSize: 13,
+                    fontSize: 14,
                   ),
                   contentPadding: const EdgeInsets.symmetric(
                       horizontal: 14, vertical: 0),
@@ -504,84 +482,7 @@ class _ConnectionPageState extends State<ConnectionPage>
     );
   }
 
-  /// More options dropdown button
-  Widget _buildMoreOptionsButton(BuildContext context) {
-    return Container(
-      height: 36,
-      width: 36,
-      decoration: BoxDecoration(
-        border: Border.all(color: PCNETColors.borderColor, width: 1),
-        borderRadius: BorderRadius.circular(8),
-        color: PCNETColors.grayDark,
-      ),
-      child: Center(
-        child: StatefulBuilder(
-          builder: (context, setState) {
-            var offset = Offset(0, 0);
-            return Obx(() => InkWell(
-                  child: _menuOpen.value
-                      ? Transform.rotate(
-                          angle: 3.14159,
-                          child: Icon(
-                            IconFont.more,
-                            size: 14,
-                            color: PCNETColors.greenPrimary,
-                          ),
-                        )
-                      : Icon(
-                          IconFont.more,
-                          size: 14,
-                          color: PCNETColors.textSecondary,
-                        ),
-                  onTapDown: (e) {
-                    offset = e.globalPosition;
-                  },
-                  onTap: () async {
-                    _menuOpen.value = true;
-                    final x = offset.dx;
-                    final y = offset.dy;
-                    await mod_menu
-                        .showMenu(
-                      context: context,
-                      position: RelativeRect.fromLTRB(x, y, x, y),
-                      items: [
-                        ('Transfer file', () => onConnect(isFileTransfer: true)),
-                        ('View camera', () => onConnect(isViewCamera: true)),
-                        ('${translate('Terminal')} (beta)', () => onConnect(isTerminal: true)),
-                      ]
-                          .map((e) => MenuEntryButton<String>(
-                                childBuilder: (TextStyle? style) => Text(
-                                  translate(e.$1),
-                                  style: style,
-                                ),
-                                proc: () => e.$2(),
-                                padding: EdgeInsets.symmetric(
-                                    horizontal: kDesktopMenuPadding.left),
-                                dismissOnClicked: true,
-                              ))
-                          .map((e) => e.build(
-                              context,
-                              const MenuConfig(
-                                  commonColor: CustomPopupMenuTheme.commonColor,
-                                  height: CustomPopupMenuTheme.height,
-                                  dividerHeight: CustomPopupMenuTheme.dividerHeight)))
-                          .expand((i) => i)
-                          .toList(),
-                      elevation: 8,
-                    )
-                        .then((_) {
-                      _menuOpen.value = false;
-                    });
-                  },
-                ));
-          },
-        ),
-      ),
-    );
-  }
-
   /// Callback for the connect button.
-  /// Connects to the selected peer.
   void onConnect(
       {bool isFileTransfer = false,
       bool isViewCamera = false,
@@ -592,5 +493,4 @@ class _ConnectionPageState extends State<ConnectionPage>
         isViewCamera: isViewCamera,
         isTerminal: isTerminal);
   }
-
 }
