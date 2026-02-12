@@ -77,37 +77,6 @@ class _OnlineStatusWidgetState extends State<OnlineStatusWidget> {
               .marginOnly(left: em),
         );
 
-    setupServerWidget() => Flexible(
-          child: Offstage(
-            offstage: !(!_svcStopped.value &&
-                stateGlobal.svcStatus.value == SvcStatus.ready &&
-                _svcIsUsingPublicServer.value),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Text(', ', style: TextStyle(fontSize: em)),
-                Flexible(
-                  child: InkWell(
-                    onTap: onUsePublicServerGuide,
-                    child: Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            translate('setup_server_tip'),
-                            style: TextStyle(
-                                decoration: TextDecoration.underline,
-                                fontSize: em),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              ],
-            ),
-          ),
-        );
-
     basicWidget() => Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -122,20 +91,11 @@ class _OnlineStatusWidgetState extends State<OnlineStatusWidget> {
                     : (stateGlobal.svcStatus.value == SvcStatus.ready
                         ? PCNETColors.statusOnline
                         : PCNETColors.statusError),
-                boxShadow: stateGlobal.svcStatus.value == SvcStatus.ready
-                    ? PCNETColors.neonGlow
-                    : null,
               ),
             ).marginSymmetric(horizontal: em),
-            Container(
-              width: isIncomingOnly ? 226 : null,
-              child: _buildConnStatusMsg(),
-            ),
+            _buildConnStatusMsg(),
             // stop
             if (!isIncomingOnly) startServiceWidget(),
-            // ready && public
-            // No need to show the guide if is custom client.
-            if (!isIncomingOnly) setupServerWidget(),
           ],
         );
 
